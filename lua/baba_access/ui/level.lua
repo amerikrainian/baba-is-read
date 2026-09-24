@@ -19,7 +19,6 @@ local pending = {}        -- lines to flush ahead of the next turn line
 local before = nil        -- { key = <command>, you = { [fixed] = {x, y, name} } } from command_given
 local known_rules = nil   -- set of rule strings after the last announcement
 local announce_start = false
-local level_key = nil     -- identity of the level last announced
 
 local function you_snapshot()
 	local snap = {}
@@ -117,21 +116,14 @@ local function on_undo()
 	flush(i18n.t("level.undo_at", where_line(false)), true)
 end
 
--- A level is announced when the game's level_start hook fires, and as a
--- fallback when a different level is on show than the one last announced
--- (pausing and resuming is not a new level).
-local function current_key()
-	if not state.in_puzzle() then return nil end
-	return tostring(generaldata.strings[WORLD]) .. "/" .. tostring(generaldata.strings[CURRLEVEL])
-end
-
+-- A level is announced only when the game's level_start hook has fired; the
+-- data is already the new level's at that point. Menus opening and closing
+-- over a level, and the transition frames, never re-announce it.
 function M.tick()
-	local key = current_key()
-	if key and (announce_start or key ~= level_key) then
-		announce_start = false
-		level_key = key
-		M.announce_level()
-	end
+	if not announce_start or not state.level_loaded() then return end
+	announce_start = false
+	if state.is_map() then return end -- the map module announces maps
+	M.announce_level()
 end
 
 function M.say_rules()
@@ -156,10 +148,9 @@ function M.attach(m)
 	mods = m
 	speech, i18n, hooks, input, config, log, state = m.speech, m.i18n, m.hooks, m.input, m.config, m.log, m.level_state
 	pending, before, known_rules, announce_start = {}, nil, nil, false
-	level_key = current_key()
-	if level_key then known_rules = rules_set() end
+	if state.in_puzzle() then known_rules = rules_set() end
 
-	hooks.on("level_start", "level.start", function() log.info("level_start hook"); announce_start = true end)
+	hooks.on("level_start", "level.start", function() announce_start = true end)
 	hooks.on("command_given", "level.command", on_command)
 	hooks.on("turn_end", "level.turn", on_turn_end)
 	hooks.on("rule_update_after", "level.rules", on_rules_updated)

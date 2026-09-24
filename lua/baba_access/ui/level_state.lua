@@ -18,6 +18,12 @@ function M.in_level()
 	return type(editor) == "table" and editor.strings[MENU] == "ingame" and type(units) == "table" and #units > 0
 end
 
+-- A level's data is in place (units loaded), whatever screen is over it: true
+-- during the level intro card as well as in play.
+function M.level_loaded()
+	return type(units) == "table" and #units > 0 and type(generaldata) == "table"
+end
+
 -- A map is a level whose units include level icons (a non-empty level file).
 function M.is_map()
 	for _, u in ipairs(units or {}) do

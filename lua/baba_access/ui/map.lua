@@ -20,7 +20,7 @@ local M = {}
 
 local speech, i18n, hooks, input, config, log, state
 
-local last_key = nil        -- the map last announced
+local announce_start = false -- set by the level_start hook
 local last_tile = nil       -- "x,y" of the cursor last spoken
 local list = nil            -- { items = {...}, index = n } while the list is open
 local rx, ry = 0, 0         -- the reading cursor (J, K, Home)
@@ -161,21 +161,20 @@ function M.announce_map()
 	speech.speak(table.concat(lines, ". "), true)
 end
 
-local function current_key()
-	if not state.in_level() or not state.is_map() then return nil end
-	return tostring(generaldata.strings[WORLD]) .. "/" .. tostring(generaldata.strings[CURRLEVEL])
-end
-
+-- The map is announced only when the game's level_start hook has fired for
+-- it; a menu closing over it, or a transition frame, never repeats the line.
 function M.tick()
-	local key = current_key()
-	if not key then last_key = nil; list = nil; return end
-	local cursor = M.cursor_unit()
-	if key ~= last_key then
-		last_key = key
-		M.announce_map()
-		if cursor then rx, ry = cursor.values[XPOS], cursor.values[YPOS]; read_index = 0 end
+	if announce_start and state.level_loaded() then
+		announce_start = false
+		if state.is_map() then
+			M.announce_map()
+			local c = M.cursor_unit()
+			if c then rx, ry = c.values[XPOS], c.values[YPOS]; read_index = 0 end
+		end
 		return
 	end
+	if not (state.in_level() and state.is_map()) then list = nil; return end
+	local cursor = M.cursor_unit()
 	if not cursor then return end
 	local tile = cursor.values[XPOS] .. "," .. cursor.values[YPOS]
 	if tile ~= last_tile then
@@ -318,7 +317,8 @@ end
 
 function M.attach(m)
 	speech, i18n, hooks, input, config, log, state = m.speech, m.i18n, m.hooks, m.input, m.config, m.log, m.level_state
-	last_key, last_tile, list = nil, nil, nil
+	announce_start, last_tile, list = false, nil, nil
+	hooks.on("level_start", "map.start", function() announce_start = true end)
 	hooks.on("command_given", "map.command", on_command)
 	hooks.on("turn_end", "map.turn", on_turn_end)
 	local on_map = function() return state.in_level() and state.is_map() end
