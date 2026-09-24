@@ -28,6 +28,10 @@ local function load_modules(reloading)
 	package.loaded["baba_access.ui.menu_overrides"] = nil
 	mods.menu = require_fresh("baba_access.ui.menu")
 	mods.menu_nav = require_fresh("baba_access.ui.menu_nav")
+	mods.dialog = require_fresh("baba_access.ui.dialog")
+	mods.level_state = require_fresh("baba_access.ui.level_state")
+	mods.level = require_fresh("baba_access.ui.level")
+	mods.explore = require_fresh("baba_access.ui.explore")
 	return mods
 end
 
@@ -39,6 +43,9 @@ local function tick(extra)
 	mods.input.tick()
 	mods.dev.tick()
 	mods.menu.tick(frame)
+	mods.dialog.tick(frame)
+	mods.level.tick()
+	mods.explore.tick()
 end
 
 local function bind_global_keys()
@@ -83,6 +90,10 @@ function M.start(reloading)
 
 	mods.menu.attach(mods)
 	mods.menu_nav.attach(mods)
+	mods.dialog.attach(mods)
+	mods.level_state.attach(mods)
+	mods.level.attach(mods)
+	mods.explore.attach(mods)
 	bind_global_keys()
 	hooks.on("always", "main.tick", tick)
 

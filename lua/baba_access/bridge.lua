@@ -13,7 +13,7 @@ local EXPORTS = {
 	"baba_version", "baba_selftest", "baba_selftest2",
 	"baba_speech_init", "baba_speak", "baba_stop",
 	"baba_log",
-	"baba_keycap_install", "baba_capture", "baba_poll_key", "baba_pretend_focus",
+	"baba_keycap_install", "baba_capture", "baba_poll_key", "baba_pretend_focus", "baba_click", "baba_client_size",
 	"baba_dev_start", "baba_dev_poll", "baba_dev_reply",
 }
 

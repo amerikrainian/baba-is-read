@@ -70,8 +70,18 @@ static GetRawInputData_t o_GetRawInputData;
 static int masked(int vk) { return vk >= 0 && vk < 256 && g_capture[vk]; }
 static int synth(int vk) { return vk >= 0 && vk < 256 && g_synth[vk]; }
 
+// Synthetic click state: while a click is in flight the cursor reads at its
+// point and the button reads as held, for anything that polls instead of
+// listening to messages.
+static POINT g_click_screen;
+static DWORD g_click_pos_until, g_click_down_until;
+static int g_click_vk;
+static int click_pos_active(void) { return g_click_pos_until && (LONG)(GetTickCount() - g_click_pos_until) < 0; }
+static int click_down_active(void) { return g_click_down_until && (LONG)(GetTickCount() - g_click_down_until) < 0; }
+
 static SHORT WINAPI h_GetAsyncKeyState(int vk) {
     InterlockedIncrement(&g_calls_async);
+    if (vk == g_click_vk && click_down_active()) return (SHORT)0x8001;
     if (synth(vk)) return (SHORT)0x8001;
     if (masked(vk)) return 0;
     return o_GetAsyncKeyState(vk);
@@ -147,10 +157,18 @@ void ba_keycap_pretend_focus(int on) {
 
 int ba_keycap_pretend_focus_get(void) { return g_pretend_focus; }
 
+typedef BOOL (WINAPI *GetCursorPos_t)(LPPOINT);
+static GetCursorPos_t o_GetCursorPos;
+static BOOL WINAPI h_GetCursorPos(LPPOINT p) {
+    if (p && click_pos_active()) { *p = g_click_screen; return TRUE; }
+    return o_GetCursorPos(p);
+}
+
 static void install_state_hooks(void) {
     static int done;
     if (done) return;
     done = 1;
+    ba_iat_hook("USER32.dll", "GetCursorPos", (void *)h_GetCursorPos, (void **)&o_GetCursorPos);
     int a = ba_iat_hook("USER32.dll", "GetAsyncKeyState", (void *)h_GetAsyncKeyState, (void **)&o_GetAsyncKeyState);
     int k = ba_iat_hook("USER32.dll", "GetKeyState", (void *)h_GetKeyState, (void **)&o_GetKeyState);
     int s = ba_iat_hook("USER32.dll", "GetKeyboardState", (void *)h_GetKeyboardState, (void **)&o_GetKeyboardState);
@@ -281,4 +299,41 @@ void ba_keycap_stats(char *buf, size_t cap) {
         (o_GetForegroundWindow ? o_GetForegroundWindow() : GetForegroundWindow()) == g_hwnd, g_pretend_focus);
     for (int vk = 1; vk < 256 && n > 0 && (size_t)n + 8 < cap; vk++)
         if (g_engine_down[vk]) n += snprintf(buf + n, cap - (size_t)n, "%d,", vk);
+}
+
+// ---- Synthetic mouse ----
+// The engine's dialogs without a cursor grid (restart confirm and kin) answer
+// only to the mouse, so Lua can click a button by its screen position: a move
+// then a press and release, all through the window like the keys.
+// A click in phases, since the engine samples input once per frame: phase 1
+// moves the cursor to the point and presses (the window procedure is run
+// directly, this being the game's own thread, and the polled state agrees for
+// a while), phase 2 releases; phase 0 does both at once. Lua spaces the phases
+// a few frames apart.
+int ba_keycap_click(int x, int y, int right, int phase) {
+    if (!g_hwnd) return 0;
+    LPARAM pos = (LPARAM)((y & 0xffff) << 16 | (x & 0xffff));
+    int vk = right ? VK_RBUTTON : VK_LBUTTON;
+    if (phase != 2) {
+        POINT pt = { x, y };
+        ClientToScreen(g_hwnd, &pt);
+        g_click_screen = pt;
+        g_click_vk = vk;
+        g_click_pos_until = GetTickCount() + 400;
+        g_click_down_until = GetTickCount() + (phase == 0 ? 60 : 400);
+        SendMessageW(g_hwnd, WM_MOUSEMOVE, 0, pos);
+        SendMessageW(g_hwnd, right ? WM_RBUTTONDOWN : WM_LBUTTONDOWN, right ? MK_RBUTTON : MK_LBUTTON, pos);
+    }
+    if (phase != 1) {
+        g_click_down_until = 0;
+        SendMessageW(g_hwnd, right ? WM_RBUTTONUP : WM_LBUTTONUP, 0, pos);
+    }
+    return 1;
+}
+
+// Client area size packed as width << 16 | height, 0 without a window.
+int ba_keycap_client_size(void) {
+    RECT r;
+    if (!g_hwnd || !GetClientRect(g_hwnd, &r)) return 0;
+    return (int)(((r.right - r.left) & 0xffff) << 16 | ((r.bottom - r.top) & 0xffff));
 }

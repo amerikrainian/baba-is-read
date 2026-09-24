@@ -35,6 +35,8 @@ int ba_keycap_post(int vk, int down); // synthetic key through the game window
 HWND ba_keycap_hwnd(void);
 void ba_keycap_stats(char *buf, size_t cap);
 void ba_keycap_pretend_focus(int on);
+int ba_keycap_click(int x, int y, int right, int phase);
+int ba_keycap_client_size(void);
 int ba_keycap_pretend_focus_get(void);
 
 // devserver.c
