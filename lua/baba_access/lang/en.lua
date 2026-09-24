@@ -30,7 +30,7 @@ return {
 	["nav.no_details"] = "no details",
 
 	-- Levels. Terse: the shape of the line carries the meaning.
-	["level.pos"] = "{0}, {1}",             -- row, col
+	["level.pos"] = "{0}, {1}",             -- column, row
 	["level.count"] = "{0} {1}",            -- name, count
 	["level.text"] = "{0} text",            -- the word BABA as opposed to the object
 	["level.blocked"] = "blocked",

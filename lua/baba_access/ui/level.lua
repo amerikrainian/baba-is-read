@@ -1,11 +1,11 @@
 -- Level announcer: what happens in a level, from the game's own hooks.
 --
---   level start     -> "<level name>. <rules>. <you>, row, col"
---   a move          -> "row, col[, what is on the tile]"      (the player moved)
+--   level start     -> "<level name>. <rules>. <you>, col, row"
+--   a move          -> "col, row[, what is on the tile]"      (the player moved)
 --                      "blocked[, what is ahead]"             (the player did not)
 --                      "wait"                                  (a passed turn)
 --   rules changed   -> "new: rock is win" / "gone: wall is stop", ahead of the turn line
---   win / undo      -> "win" / "undo, row, col"
+--   win / undo      -> "win" / "undo, col, row"
 --   no you left     -> "no you"
 --
 -- Terse by design: no verbs where the shape of the line already says it.
@@ -44,7 +44,7 @@ local function flush(line, interrupt)
 	speech.speak(table.concat(parts, ". "), interrupt)
 end
 
--- The line for where the player is now: "<name>, row, col[, contents]" with
+-- The line for where the player is now: "<name>, col, row[, contents]" with
 -- the name only when asked for or changed.
 local function where_line(with_name, prev)
 	local you = state.you_units()

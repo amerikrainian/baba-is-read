@@ -4,7 +4,8 @@
 -- (every object), `unitmap[x + y * roomsizex]` (the objects on a tile),
 -- `visualfeatures` (the rules spelled out on screen), `featureindex` (the
 -- rules by word). Positions are the game's own: x is the column, y the row,
--- both counted from the room's top-left corner; announcements say row first.
+-- both counted from the room's top-left corner; announcements say the column
+-- first, then the row, like chess notation.
 local M = {}
 
 local config, i18n, speech
@@ -72,7 +73,7 @@ function M.describe_tile(x, y, exclude)
 end
 
 function M.pos_text(x, y)
-	return i18n.t("level.pos", y, x)
+	return i18n.t("level.pos", x, y)
 end
 
 -- The units the player controls (rule "... is you"), first the primary one.
