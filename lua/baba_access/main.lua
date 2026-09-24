@@ -32,6 +32,7 @@ local function load_modules(reloading)
 	mods.level_state = require_fresh("baba_access.ui.level_state")
 	mods.level = require_fresh("baba_access.ui.level")
 	mods.explore = require_fresh("baba_access.ui.explore")
+	mods.map = require_fresh("baba_access.ui.map")
 	return mods
 end
 
@@ -46,6 +47,7 @@ local function tick(extra)
 	mods.dialog.tick(frame)
 	mods.level.tick()
 	mods.explore.tick()
+	mods.map.tick()
 end
 
 local function bind_global_keys()
@@ -94,6 +96,7 @@ function M.start(reloading)
 	mods.level_state.attach(mods)
 	mods.level.attach(mods)
 	mods.explore.attach(mods)
+	mods.map.attach(mods)
 	bind_global_keys()
 	hooks.on("always", "main.tick", tick)
 

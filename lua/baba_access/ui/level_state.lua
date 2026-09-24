@@ -18,6 +18,19 @@ function M.in_level()
 	return type(editor) == "table" and editor.strings[MENU] == "ingame" and type(units) == "table" and #units > 0
 end
 
+-- A map is a level whose units include level icons (a non-empty level file).
+function M.is_map()
+	for _, u in ipairs(units or {}) do
+		if (u.strings[U_LEVELFILE] or "") ~= "" then return true end
+	end
+	return false
+end
+
+-- A playable level: in a level and not on a map.
+function M.in_puzzle()
+	return M.in_level() and not M.is_map()
+end
+
 function M.width() return roomsizex or 0 end
 function M.height() return roomsizey or 0 end
 

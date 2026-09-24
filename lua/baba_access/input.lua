@@ -56,6 +56,13 @@ function M.attach(b, opts)
 	M.pretend_focus = opts and opts.pretend_focus or false
 end
 
+-- For the dev server: every layer with whether it is active right now.
+function M.layer_states()
+	local out = {}
+	for _, l in ipairs(layers) do out[#out + 1] = l.name .. "=" .. tostring(l.active()) end
+	return out
+end
+
 -- The game window exists only once the engine is up, so installation is retried
 -- from tick() until it succeeds.
 local function ensure_capture()
@@ -63,6 +70,10 @@ local function ensure_capture()
 	local ok, res = pcall(bridge.keycap_install)
 	if ok and res then
 		capture_ready = true
+		-- A reload starts with an empty picture of what the native side captures;
+		-- release everything so no key from the previous generation stays taken.
+		for vk = 1, 255 do bridge.capture(vk, 0) end
+		captured = {}
 		if M.pretend_focus then bridge.pretend_focus(1) end
 		log.info("input: key capture installed")
 	end

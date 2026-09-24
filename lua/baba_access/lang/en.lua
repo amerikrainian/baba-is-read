@@ -47,6 +47,21 @@ return {
 	["level.edge"] = "edge",
 	["level.no_objects"] = "no objects",
 
+	-- The world map
+	["map.entry"] = "map. {0} open, {1} locked, {2} completed",
+	["map.open"] = "open",
+	["map.locked"] = "locked",
+	["map.completed"] = "completed",
+	["map.unreachable"] = "no path",
+	["map.dead_end"] = "dead end",
+	["map.no_levels"] = "no levels",
+	["map.list_title"] = "levels, {0}",
+	["map.list_closed"] = "closed",
+	["dir.right"] = "right",
+	["dir.up"] = "up",
+	["dir.left"] = "left",
+	["dir.down"] = "down",
+
 	-- Menu titles, by the game's internal menu name. A menu without an entry is
 	-- announced by its on-screen heading text alone.
 	["menu.main"] = "Main menu",

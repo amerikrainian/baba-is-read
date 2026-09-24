@@ -60,9 +60,17 @@ and nothing caches game state the game can be asked for live.
   area and centres it. **A minimized window drops mouse input** (and reports a 0 x 0 client), and a
   FULLSCREEN game minimizes whenever it loses focus, so develop with the game windowed
   (`[settings] fullscreen=0` in `SettingsC.txt`, or the Settings menu's toggle).
-- **The level map is a level**: the cursor is a unit named `cursor`, level icons are units with
-  `strings[U_LEVELNAME]`, `[U_LEVELFILE]`, `values[COMPLETED]`; `mapcursor_displayname` (engine-called)
-  fires when the cursor lands on a level; `MF_findgates`, `MF_findpaths(x,y)`.
+- **The level map is a level** (`106level`, name "map", in the `baba` world; `state.is_map()` =
+  any unit with a non-empty `U_LEVELFILE`): the cursor is a unit with the `select` effect
+  (`getunitswitheffect("select", true)`), level icons are units with `strings[U_LEVELFILE]`,
+  `[U_LEVELNAME]` and `values[COMPLETED]` (0 hidden and invisible, 1 visible but locked, 2 open,
+  3 completed), path segments are special `path` objects, not units, found through
+  `findallhere(x, y, exclude, true)` / `MF_findpaths(x, y)`, invisible while closed. The engine
+  moves the cursor (`mapcursor_move`) onto a tile only if it holds a visible, living object with
+  `COMPLETED > 1`; `mapcursor_enter` starts the level under the cursor; `mapcursor_hardset(levelid)`
+  is the engine's own way to place the cursor on a level icon and is what the level list uses.
+  The map has rules of its own (`baba is you`, `flag is win` lie on it) and no `you` unit, so the
+  in-level announcer must stand down there (`state.in_puzzle()`).
 - **In a level**: `units`, `unitmap[x + y*roomsizex]` (fixed ids per tile), a unit's
   `strings[UNITNAME]`, `values[XPOS]`, `[YPOS]`, `[DIR]`; the parsed rules in `features` / `featureindex`
   / `visualfeatures` (`{ {target, verb, effect}, conds, ids, tags }`, `addoption` in `rules.lua`);
@@ -165,12 +173,18 @@ F5 repeats the focused item, F7 reads the whole menu (title, static text, every 
 F8 the focused item's tooltip (the game sets `BUTTONTOOLTIP` only on editor toolbar, quick-menu and
 object-palette buttons; play menus have none), F6 reloads, Ctrl+Shift+S mutes. In a grid menu the
 arrows are ours (`menu_list` layer); in a dialog the arrows, Enter and Space (`dialog` layer). In a
-level (`level` and `explore` layers, `editor.strings[MENU] == "ingame"`): the ARROWS are the
-exploration cursor (decided: always, no mode to toggle; the player moves with the game's WASD, which
-the mod never captures), J/K jump to the next/previous object in reading order from the cursor,
-Home parks the cursor on the player, T the rules, H where you are, L the object counts. Nothing
-else is bound; Space stays the game's outside dialogs. Known consequence: the level map is also
-`"ingame"`, so its cursor moves with WASD until step 6 gives the map its own handling.
+level (`level` and `explore` layers, `state.in_puzzle()`): the ARROWS are the exploration cursor
+(decided: always, no mode to toggle; the player moves with the game's WASD, which the mod never
+captures), J/K jump to the next/previous object in reading order from the cursor, Home parks the
+cursor on the player, T the rules, H where you are, L the object counts. On the world map (`map`
+layer, `state.is_map()`): the arrows are the GAME's and walk its cursor, every tile spoken; J/K are
+a reading cursor over the map's objects and Home returns it to the game cursor; L opens the level
+list (`map_list` layer: Up/Down, Enter, Escape or L), H reads the cursor's tile. **Decided: the
+game's map cursor is moved by the mod only through the list, and only onto a reachable open
+level** (BFS over passable tiles from where it stands, the engine's own passability rule): the map
+cursor is game state, and placing it anywhere else steps over closed gates and solves the maps that
+are puzzles of their own (secret levels sit at odd spots you must walk to). Nothing else is bound;
+Space stays the game's outside dialogs.
 
 **Announcements are terse**: the shape of the line carries the meaning. A move is "col, row[,
 contents]", never "moved to"; a blocked move "blocked, wall"; a rule change "new: rock is win" /
@@ -217,7 +231,12 @@ are ours because the game draws most menus without a name.
    `command_given` against `turn_end` for moved/blocked/wait, rule diffs on `rule_update_after`
    flushed ahead of the turn line, `undoed_after`, `level_win`. Open: what was pushed, deaths and
    transformations named, multiple `you` objects, "Level Is Auto" turns, the map (see 6).
-6. Level map: hook `mapcursor_displayname`, level completion, a key for paths/gates/levels around.
+6. **(done, first pass)** Level map (`ui/map.lua`): entry line with open/locked/completed counts,
+   every cursor tile spoken (level and status, or the directions that continue), the level list
+   with reachable-first ordering and the engine-placed jump, J/K reading cursor. Open: the HUD
+   counters (cleared, bonus, prize: special objects, read them from the save data), the
+   `enterlevel_multiple` chooser, sub-maps (each numbered area is a map of its own), the status
+   of a level's bonus.
 7. **(done, first pass)** Exploration cursor (`ui/explore.lua`): the arrows in every level, parked
    on the player at level start. Open: distance and direction from the player in readouts, jump by
    object kind, a "what is around me" summary.

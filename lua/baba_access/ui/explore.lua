@@ -2,9 +2,10 @@
 --
 -- In a level the arrow keys are ours and step a cursor over the tiles, each
 -- step speaking "col, row[, contents]"; the game's own WASD move the player and
--- are never captured. J and K jump to the next and previous object in reading
--- order from the cursor, Home returns the cursor to the player. The cursor
--- parks on the player when a level starts.
+-- are never captured. On the world map the arrows stay the game's (see
+-- map.lua). J and K jump to the next and previous object in reading order
+-- from the cursor, Home returns the cursor to the player. The cursor parks on
+-- the player when a level starts.
 local M = {}
 
 local speech, i18n, input, state, log
@@ -62,7 +63,7 @@ end
 function M.cursor() return cx, cy end
 
 function M.tick()
-	if not state.in_level() then parked_for = nil; return end
+	if not state.in_puzzle() then parked_for = nil; return end
 	local key = tostring(generaldata.strings[WORLD]) .. "/" .. tostring(generaldata.strings[CURRLEVEL])
 	if key ~= parked_for then
 		parked_for = key
@@ -73,7 +74,7 @@ end
 function M.attach(m)
 	speech, i18n, input, state, log = m.speech, m.i18n, m.input, m.level_state, m.log
 	parked_for = nil
-	input.layer("explore", state.in_level)
+	input.layer("explore", state.in_puzzle)
 	local rep = { repeat_ok = true }
 	input.bind("explore", "right", "explore.right", function() step(1, 0) end, rep)
 	input.bind("explore", "left", "explore.left", function() step(-1, 0) end, rep)

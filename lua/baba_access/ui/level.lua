@@ -74,7 +74,7 @@ function M.announce_level()
 end
 
 local function on_rules_updated()
-	if not known_rules or not state.in_level() then return end
+	if not known_rules or not state.in_puzzle() then return end
 	local now = rules_set()
 	for r in pairs(now) do
 		if not known_rules[r] then pending[#pending + 1] = i18n.t("level.rule_added", r) end
@@ -90,7 +90,7 @@ local function on_command(extra)
 end
 
 local function on_turn_end(extra)
-	if not state.in_level() then return end
+	if not state.in_puzzle() then return end
 	local key = before and before.key
 	local snap = before and before.you or {}
 	before = nil
@@ -112,7 +112,7 @@ local function on_turn_end(extra)
 end
 
 local function on_undo()
-	if not state.in_level() then return end
+	if not state.in_puzzle() then return end
 	on_rules_updated()
 	flush(i18n.t("level.undo_at", where_line(false)), true)
 end
@@ -121,7 +121,7 @@ end
 -- fallback when a different level is on show than the one last announced
 -- (pausing and resuming is not a new level).
 local function current_key()
-	if not state.in_level() then return nil end
+	if not state.in_puzzle() then return nil end
 	return tostring(generaldata.strings[WORLD]) .. "/" .. tostring(generaldata.strings[CURRLEVEL])
 end
 
@@ -164,9 +164,9 @@ function M.attach(m)
 	hooks.on("turn_end", "level.turn", on_turn_end)
 	hooks.on("rule_update_after", "level.rules", on_rules_updated)
 	hooks.on("undoed_after", "level.undo", on_undo)
-	hooks.on("level_win", "level.win", function() pending = {}; speech.speak(i18n.t("level.win"), true) end)
+	hooks.on("level_win", "level.win", function() if state.in_puzzle() then pending = {}; speech.speak(i18n.t("level.win"), true) end end)
 
-	input.layer("level", state.in_level)
+	input.layer("level", state.in_puzzle)
 	input.bind("level", "t", "level.rules", M.say_rules)
 	input.bind("level", "h", "level.where", M.say_where)
 	input.bind("level", "l", "level.census", M.say_census)
