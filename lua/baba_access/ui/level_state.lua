@@ -47,14 +47,19 @@ function M.name_of(unit)
 	return name
 end
 
--- Objects with no rule at all are scenery (floor tiles, decorations) and are
--- left out of tile readouts unless configured otherwise; the object list still
--- counts them.
+-- Floor decoration is left out of tile readouts (config quiet_objects, a
+-- comma-separated list of names; "tile" by default); everything else a sighted
+-- player sees is read, whether or not a rule mentions it, since a wall that
+-- has just lost "wall is stop" is still a wall on screen. The census always
+-- counts everything.
+local quiet_cache, quiet_raw = nil, nil
 function M.is_inert(unit)
-	local name = unit.strings[UNITNAME]
-	if name:sub(1, 5) == "text_" then return false end
-	local rules = featureindex and featureindex[name]
-	return rules == nil or #rules == 0
+	local raw = tostring(config.get("quiet_objects") or "")
+	if raw ~= quiet_raw then
+		quiet_raw, quiet_cache = raw, {}
+		for name in raw:gmatch("[^,%s]+") do quiet_cache[name] = true end
+	end
+	return quiet_cache[unit.strings[UNITNAME]] == true
 end
 
 -- What a sighted player can see: the unit is drawn and alive. Hidden objects
