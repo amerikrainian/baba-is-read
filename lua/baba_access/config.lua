@@ -11,6 +11,7 @@ local defaults = {
 	speak_positions = true, -- "2 of 5" after menu items
 	speak_roles = true,     -- "button", "slider" after labels
 	speak_menu_text = true, -- headings and static text when a menu opens
+	speak_inert = false,    -- objects with no rule (floor, decoration) in tile readouts
 }
 
 local values = {}

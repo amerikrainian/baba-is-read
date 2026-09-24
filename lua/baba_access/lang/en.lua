@@ -29,6 +29,26 @@ return {
 	["nav.item"] = "unnamed item {0}",
 	["nav.no_details"] = "no details",
 
+	-- Levels. Terse: the shape of the line carries the meaning.
+	["level.pos"] = "{0}, {1}",             -- row, col
+	["level.count"] = "{0} {1}",            -- name, count
+	["level.text"] = "{0} text",            -- the word BABA as opposed to the object
+	["level.blocked"] = "blocked",
+	["level.blocked_by"] = "blocked, {0}",
+	["level.wait"] = "wait",
+	["level.win"] = "win",
+	["level.undo_at"] = "undo, {0}",
+	["level.no_you"] = "no you",
+	["level.you_count"] = "{0} you",
+	["level.rule_added"] = "new: {0}",
+	["level.rule_removed"] = "gone: {0}",
+	["level.no_rules"] = "no rules",
+	["level.none"] = "not in a level",
+	["level.edge"] = "edge",
+	["level.no_objects"] = "no objects",
+	["level.explore_on"] = "explore",
+	["level.explore_off"] = "explore off",
+
 	-- Menu titles, by the game's internal menu name. A menu without an entry is
 	-- announced by its on-screen heading text alone.
 	["menu.main"] = "Main menu",
