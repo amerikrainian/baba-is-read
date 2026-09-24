@@ -1,0 +1,9 @@
+# Native build output
+build/
+
+# Runtime files the dev server writes into the deployed mod (never in the repo)
+lua/baba_access/cmd/
+
+# Python
+__pycache__/
+.venv/
