@@ -8,7 +8,11 @@ A screen-reader accessibility mod for Baba Is You (Steam, Windows). Speech goes 
 - Menus laid out as a grid, such as the main menu, read as one list: Up and Down walk every item in reading order.
 - Sliders and toggles keep the game's own keys: Left and Right adjust a slider, Enter flips a toggle, and the new value is spoken.
 
-Levels and the level map are not yet spoken; that is the next step.
+- Dialogs without a cursor, such as the restart confirmation, get one: Up and Down choose a button, Enter presses it.
+- In a level: the level name, its rules and your position when it starts; after each move the new position as "row, column" plus whatever shares the tile, or "blocked, wall"; rule changes as "new: rock is win" or "gone: wall is stop"; win, undo, and "no you".
+- Explore mode: C parks a cursor on you and takes the arrows, each step reading "row, column, contents" while nothing in the level moves. J and K jump between objects, Home returns to you, Escape or C leaves. T reads the rules, H where you are, L the object counts.
+
+The level map is not yet spoken; that is the next step.
 
 ## Keys
 
@@ -19,6 +23,8 @@ The game's own keys are unchanged. The mod adds:
 | F5 | Repeat the focused item |
 | F7 | Read the whole menu: title, text, every item |
 | F8 | Read the focused item's tooltip, where the game has one (editor buttons) |
+| T, H, L | In a level: the rules, where you are, the object counts |
+| C | Explore mode on or off; then arrows, J, K, Home, Escape |
 | F6 | Reload the mod's Lua modules (development) |
 | Ctrl+Shift+S | Mute or unmute speech |
 
@@ -53,7 +59,7 @@ uv run python tools/dev.py reload     # after editing Lua; a DLL change needs a 
 uv run python tools/dev.py kill
 ```
 
-Synthetic keys work while the game is in the background; nothing brings its window forward. Check `state` before posting Enter: the title screen advances on its own once a key is pressed, and Enter on the main menu starts the game.
+Synthetic keys work while the game is in the background; nothing brings its window forward. Run the game windowed while developing: a fullscreen window minimizes when it loses focus, and a minimized window drops the synthetic mouse clicks that dialogs need. Check `state` before posting Enter: the title screen advances on its own once a key is pressed, and Enter on the main menu starts the game.
 
 The session log is `%LOCALAPPDATA%\BabaAccess\baba_access.log`, and `dev.py log --grep speech` shows what was said.
 

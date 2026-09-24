@@ -49,6 +49,17 @@ and nothing caches game state the game can be asked for live.
   `closemenu` (Lua, engine-called) switch menus; `buttonclicked(name)`/`slidermoved` are
   engine-called notifications, activation itself is native (there is no Lua way to press a button:
   move the cursor and let Enter do it).
+- **Dialogs** (about a third of `menufuncs`: `restartconfirm`, the delete/erase confirms, wait
+  screens) have buttons but no `structure`, so `INMENU` stays 0 and the engine offers NO keyboard
+  focus: they answer to the mouse and to Escape (`escbutton`); Enter and R do nothing, and the
+  buttons' state variables never change on arrows. `ui/dialog.lua` gives them a focus of ours and
+  presses a button with a synthetic click at its position (`baba_click`: `SendMessage` of
+  move/press/release on the game's thread, the cursor position and button state also faked for
+  `GetCursorPos`/`GetAsyncKeyState` for a few hundred ms, the release a few frames later). Logical
+  to client pixels: the game scales its `screenw` x `screenh` (854 x 480) uniformly into the client
+  area and centres it. **A minimized window drops mouse input** (and reports a 0 x 0 client), and a
+  FULLSCREEN game minimizes whenever it loses focus, so develop with the game windowed
+  (`[settings] fullscreen=0` in `SettingsC.txt`, or the Settings menu's toggle).
 - **The level map is a level**: the cursor is a unit named `cursor`, level icons are units with
   `strings[U_LEVELNAME]`, `[U_LEVELFILE]`, `values[COMPLETED]`; `mapcursor_displayname` (engine-called)
   fires when the cursor lands on a level; `MF_findgates`, `MF_findpaths(x,y)`.
@@ -153,7 +164,17 @@ hooks, and rules from the `features` tables.
 F5 repeats the focused item, F7 reads the whole menu (title, static text, every item row by row),
 F8 the focused item's tooltip (the game sets `BUTTONTOOLTIP` only on editor toolbar, quick-menu and
 object-palette buttons; play menus have none), F6 reloads, Ctrl+Shift+S mutes. In a grid menu the
-arrows are ours (`menu_list` layer). Nothing else is bound; Space stays the game's.
+arrows are ours (`menu_list` layer); in a dialog the arrows, Enter and Space (`dialog` layer). In a
+level (`level` layer, `editor.strings[MENU] == "ingame"`): T the rules, H where you are, L the object
+counts, C explore mode; in explore mode (`explore` layer) the arrows step the cursor, J/K jump to the
+next/previous object in reading order from the cursor, Home returns to the player, Escape leaves.
+Nothing else is bound; Space stays the game's outside dialogs.
+
+**Announcements are terse**: the shape of the line carries the meaning. A move is "row, col[,
+contents]", never "moved to"; a blocked move "blocked, wall"; a rule change "new: rock is win" /
+"gone: wall is stop"; the level start "<name>. <rules>. <you>, row, col". Positions are the game's
+own grid, row first, counted from the room's top-left. Objects with no active rule (floor tiles,
+decoration) are left out of tile readouts (`speak_inert`), never out of the census (L).
 
 ## Languages (`i18n.lua`, `lang/`; the guildrun pattern)
 The mod's words follow the GAME's language (`generaldata.strings[LANG]`: `en`, `de`, `jpn`, `kr`,
@@ -186,12 +207,16 @@ are ours because the game draws most menus without a name.
 2. **(done)** Dev server and `tools/dev.py`.
 3. **(done)** Speech layer conventions.
 4. **(done)** Menus: announcer, list navigation for grids, sliders, toggles, radio kinds via
-   overrides, F5/F7/F8. Open: text entry (`name` menu, `text_input_ok` hook), scrolling lists
-   (`ALLOWSCROLL` menus such as the level list), the languages menu's radio state, whether "button"
-   after every item stays (config `speak_roles`).
-5. Level map: hook `mapcursor_displayname`, level completion, a key for paths/gates/levels around.
-6. In-level core: turn results from `turn_end`/`movement_end`, win/defeat/transform/undo, rule
-   changes by diffing `features` on `rule_update_after`, a rules hotkey.
-7. Explore mode: a modal layer capturing the arrows for a virtual cursor over `unitmap`, object
-   lists by name and distance, jump-to-object.
-8. Polish and release: settings in the game's settings menu, README key list, release zip.
+   overrides, dialogs with a focus of ours and synthetic clicks, F5/F7/F8. Open: text entry (`name`
+   menu, `text_input_ok` hook), scrolling lists (`ALLOWSCROLL` menus such as the level list), the
+   languages menu's radio state, whether "button" after every item stays (config `speak_roles`).
+5. **(done, first pass)** In-level core (`ui/level.lua`): level start from the `level_start` hook
+   (it fires; the level identity `WORLD/CURRLEVEL` is the fallback), the player snapshot on
+   `command_given` against `turn_end` for moved/blocked/wait, rule diffs on `rule_update_after`
+   flushed ahead of the turn line, `undoed_after`, `level_win`. Open: what was pushed, deaths and
+   transformations named, multiple `you` objects, "Level Is Auto" turns, the map (see 6).
+6. Level map: hook `mapcursor_displayname`, level completion, a key for paths/gates/levels around.
+7. **(done, first pass)** Explore mode (`ui/explore.lua`). Open: distance and direction from the
+   player in readouts, jump by object kind, a "what is around me" summary.
+8. Polish and release: settings in the game's settings menu, README key list, release zip; restore
+   `fullscreen=1` in the user's settings after a dev session (it is set to 0 for the clicks).
