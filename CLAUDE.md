@@ -165,10 +165,12 @@ F5 repeats the focused item, F7 reads the whole menu (title, static text, every 
 F8 the focused item's tooltip (the game sets `BUTTONTOOLTIP` only on editor toolbar, quick-menu and
 object-palette buttons; play menus have none), F6 reloads, Ctrl+Shift+S mutes. In a grid menu the
 arrows are ours (`menu_list` layer); in a dialog the arrows, Enter and Space (`dialog` layer). In a
-level (`level` layer, `editor.strings[MENU] == "ingame"`): T the rules, H where you are, L the object
-counts, C explore mode; in explore mode (`explore` layer) the arrows step the cursor, J/K jump to the
-next/previous object in reading order from the cursor, Home returns to the player, Escape leaves.
-Nothing else is bound; Space stays the game's outside dialogs.
+level (`level` and `explore` layers, `editor.strings[MENU] == "ingame"`): the ARROWS are the
+exploration cursor (decided: always, no mode to toggle; the player moves with the game's WASD, which
+the mod never captures), J/K jump to the next/previous object in reading order from the cursor,
+Home parks the cursor on the player, T the rules, H where you are, L the object counts. Nothing
+else is bound; Space stays the game's outside dialogs. Known consequence: the level map is also
+`"ingame"`, so its cursor moves with WASD until step 6 gives the map its own handling.
 
 **Announcements are terse**: the shape of the line carries the meaning. A move is "col, row[,
 contents]", never "moved to"; a blocked move "blocked, wall"; a rule change "new: rock is win" /
@@ -216,7 +218,8 @@ are ours because the game draws most menus without a name.
    flushed ahead of the turn line, `undoed_after`, `level_win`. Open: what was pushed, deaths and
    transformations named, multiple `you` objects, "Level Is Auto" turns, the map (see 6).
 6. Level map: hook `mapcursor_displayname`, level completion, a key for paths/gates/levels around.
-7. **(done, first pass)** Explore mode (`ui/explore.lua`). Open: distance and direction from the
-   player in readouts, jump by object kind, a "what is around me" summary.
+7. **(done, first pass)** Exploration cursor (`ui/explore.lua`): the arrows in every level, parked
+   on the player at level start. Open: distance and direction from the player in readouts, jump by
+   object kind, a "what is around me" summary.
 8. Polish and release: settings in the game's settings menu, README key list, release zip; restore
    `fullscreen=1` in the user's settings after a dev session (it is set to 0 for the clicks).

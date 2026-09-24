@@ -1,21 +1,17 @@
--- Explore mode: a virtual cursor over the level while the player stays put.
+-- Exploration cursor: the arrows read the level while the player stays put.
 --
--- C toggles it. While it is on, the arrows are ours (the game never sees them,
--- so nothing moves), and each step speaks "col, row[, contents]". J and K jump
--- to the next and previous object in reading order, Home returns the cursor to
--- the player, Escape leaves the mode. Turning it on parks the cursor on the
--- player; leaving the level turns it off.
+-- In a level the arrow keys are ours and step a cursor over the tiles, each
+-- step speaking "col, row[, contents]"; the game's own WASD move the player and
+-- are never captured. J and K jump to the next and previous object in reading
+-- order from the cursor, Home returns the cursor to the player. The cursor
+-- parks on the player when a level starts.
 local M = {}
 
 local speech, i18n, input, state, log
 
-M.on = false
 local cx, cy = 0, 0
 local jump_index = 0
-
-local function active()
-	return M.on and state.in_level()
-end
+local parked_for = nil   -- level identity the cursor was last parked for
 
 local function say_tile(prefix)
 	local parts = {}
@@ -29,6 +25,7 @@ end
 local function park_on_player()
 	local u = state.you_units()[1]
 	if u then cx, cy = u.values[XPOS], u.values[YPOS] end
+	jump_index = 0
 end
 
 local function step(dx, dy)
@@ -61,27 +58,22 @@ local function jump(delta)
 	say_tile()
 end
 
-function M.toggle()
-	if not state.in_level() then speech.speak(i18n.t("level.none"), true); return end
-	M.on = not M.on
-	if M.on then
-		park_on_player()
-		jump_index = 0
-		say_tile(i18n.t("level.explore_on"))
-	else
-		speech.speak(i18n.t("level.explore_off"), true)
-	end
-end
+-- Cursor position, for other modules.
+function M.cursor() return cx, cy end
 
 function M.tick()
-	if M.on and not state.in_level() then M.on = false end
+	if not state.in_level() then parked_for = nil; return end
+	local key = tostring(generaldata.strings[WORLD]) .. "/" .. tostring(generaldata.strings[CURRLEVEL])
+	if key ~= parked_for then
+		parked_for = key
+		park_on_player()
+	end
 end
 
 function M.attach(m)
 	speech, i18n, input, state, log = m.speech, m.i18n, m.input, m.level_state, m.log
-	M.on = false
-	input.bind("level", "c", "explore.toggle", M.toggle)
-	input.layer("explore", active)
+	parked_for = nil
+	input.layer("explore", state.in_level)
 	local rep = { repeat_ok = true }
 	input.bind("explore", "right", "explore.right", function() step(1, 0) end, rep)
 	input.bind("explore", "left", "explore.left", function() step(-1, 0) end, rep)
@@ -89,8 +81,7 @@ function M.attach(m)
 	input.bind("explore", "down", "explore.down", function() step(0, 1) end, rep)
 	input.bind("explore", "j", "explore.next", function() jump(1) end, rep)
 	input.bind("explore", "k", "explore.prev", function() jump(-1) end, rep)
-	input.bind("explore", "home", "explore.home", function() park_on_player(); jump_index = 0; say_tile() end)
-	input.bind("explore", "escape", "explore.exit", function() M.toggle() end)
+	input.bind("explore", "home", "explore.home", function() park_on_player(); say_tile() end)
 end
 
 return M

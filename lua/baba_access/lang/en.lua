@@ -46,8 +46,6 @@ return {
 	["level.none"] = "not in a level",
 	["level.edge"] = "edge",
 	["level.no_objects"] = "no objects",
-	["level.explore_on"] = "explore",
-	["level.explore_off"] = "explore off",
 
 	-- Menu titles, by the game's internal menu name. A menu without an entry is
 	-- announced by its on-screen heading text alone.
