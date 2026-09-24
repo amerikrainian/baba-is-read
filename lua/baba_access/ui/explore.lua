@@ -1,7 +1,7 @@
 -- Explore mode: a virtual cursor over the level while the player stays put.
 --
 -- C toggles it. While it is on, the arrows are ours (the game never sees them,
--- so nothing moves), and each step speaks "row, col[, contents]". J and K jump
+-- so nothing moves), and each step speaks "col, row[, contents]". J and K jump
 -- to the next and previous object in reading order, Home returns the cursor to
 -- the player, Escape leaves the mode. Turning it on parks the cursor on the
 -- player; leaving the level turns it off.

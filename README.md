@@ -9,8 +9,8 @@ A screen-reader accessibility mod for Baba Is You (Steam, Windows). Speech goes 
 - Sliders and toggles keep the game's own keys: Left and Right adjust a slider, Enter flips a toggle, and the new value is spoken.
 
 - Dialogs without a cursor, such as the restart confirmation, get one: Up and Down choose a button, Enter presses it.
-- In a level: the level name, its rules and your position when it starts; after each move the new position as "row, column" plus whatever shares the tile, or "blocked, wall"; rule changes as "new: rock is win" or "gone: wall is stop"; win, undo, and "no you".
-- Explore mode: C parks a cursor on you and takes the arrows, each step reading "row, column, contents" while nothing in the level moves. J and K jump between objects, Home returns to you, Escape or C leaves. T reads the rules, H where you are, L the object counts.
+- In a level: the level name, its rules and your position when it starts; after each move the new position as "column, row" (column first, like chess notation) plus whatever shares the tile, or "blocked, wall"; rule changes as "new: rock is win" or "gone: wall is stop"; win, undo, and "no you".
+- Explore mode: C parks a cursor on you and takes the arrows, each step reading "column, row, contents" while nothing in the level moves. J and K jump between objects, Home returns to you, Escape or C leaves. T reads the rules, H where you are, L the object counts.
 
 The level map is not yet spoken; that is the next step.
 
