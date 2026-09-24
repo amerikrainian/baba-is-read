@@ -51,7 +51,13 @@ function M.is_inert(unit)
 	return rules == nil or #rules == 0
 end
 
--- Units on a tile, as objects.
+-- What a sighted player can see: the unit is drawn and alive. Hidden objects
+-- (invisible level icons, anything a rule hides) are never read.
+function M.is_visible(u)
+	return u ~= nil and u.visible == true and u.flags[DEAD] == false
+end
+
+-- Visible units on a tile, as objects.
 function M.units_at(x, y)
 	local out = {}
 	if not unitmap or not roomsizex then return out end
@@ -59,7 +65,7 @@ function M.units_at(x, y)
 	if not list then return out end
 	for _, id in ipairs(list) do
 		local u = mmf.newObject(id)
-		if u then out[#out + 1] = u end
+		if M.is_visible(u) then out[#out + 1] = u end
 	end
 	return out
 end
@@ -118,7 +124,7 @@ function M.objects()
 	local you = {}
 	for _, u in ipairs(M.you_units()) do you[u.fixed] = true end
 	for _, u in ipairs(units) do
-		if not you[u.fixed] and not (not config.get("speak_inert") and M.is_inert(u)) then
+		if M.is_visible(u) and not you[u.fixed] and not (not config.get("speak_inert") and M.is_inert(u)) then
 			out[#out + 1] = u
 		end
 	end
@@ -133,9 +139,11 @@ end
 function M.census()
 	local counts, names = {}, {}
 	for _, u in ipairs(units or {}) do
-		local n = M.name_of(u)
-		if not counts[n] then counts[n] = 0; names[#names + 1] = n end
-		counts[n] = counts[n] + 1
+		if M.is_visible(u) then
+			local n = M.name_of(u)
+			if not counts[n] then counts[n] = 0; names[#names + 1] = n end
+			counts[n] = counts[n] + 1
+		end
 	end
 	table.sort(names, function(a, b)
 		if counts[a] ~= counts[b] then return counts[a] > counts[b] end

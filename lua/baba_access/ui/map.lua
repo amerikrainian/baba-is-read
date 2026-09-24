@@ -184,7 +184,8 @@ function M.objects()
 	for _, u in ipairs(units or {}) do
 		local file = u.strings[U_LEVELFILE] or ""
 		local keep
-		if file ~= "" then keep = u.visible and u.flags[DEAD] == false and (u.values[COMPLETED] or 0) >= 1
+		if not state.is_visible(u) then keep = false
+		elseif file ~= "" then keep = (u.values[COMPLETED] or 0) >= 1
 		elseif cursor and u.fixed == cursor.fixed then keep = false
 		else keep = config.get("speak_inert") or not state.is_inert(u) end
 		if keep then out[#out + 1] = u end
