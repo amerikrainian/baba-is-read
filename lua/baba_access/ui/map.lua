@@ -118,8 +118,31 @@ function M.describe_cursor(cursor)
 	for _, d in ipairs(DIRS) do
 		if M.passable(x + d[1], y + d[2], cursor) then dirs[#dirs + 1] = i18n.t(d[3]) end
 	end
-	if #dirs > 0 then parts[#parts + 1] = table.concat(dirs, " ") elseif not l then parts[#parts + 1] = i18n.t("map.dead_end") end
+	if #dirs > 0 then parts[#parts + 1] = table.concat(dirs, " ") else parts[#parts + 1] = i18n.t("map.unreachable") end
 	return table.concat(parts, ", ")
+end
+
+-- A refused move: the engine moves the cursor only along open paths and says
+-- nothing when it cannot. The command is remembered and, if the cursor has not
+-- moved by the end of the turn, "no path" is spoken.
+local pending_move = nil
+local function on_command(extra)
+	if not (state.in_level() and state.is_map()) then return end
+	local cursor = M.cursor_unit()
+	if not cursor then return end
+	pending_move = { key = extra and extra[1], x = cursor.values[XPOS], y = cursor.values[YPOS] }
+end
+
+local function on_turn_end()
+	local move = pending_move
+	pending_move = nil
+	if not move or not (state.in_level() and state.is_map()) then return end
+	local dir = keys and move.key and keys[move.key]
+	if dir == nil or dir > 3 then return end
+	local cursor = M.cursor_unit()
+	if cursor and cursor.values[XPOS] == move.x and cursor.values[YPOS] == move.y then
+		speech.speak(i18n.t("map.unreachable"), true)
+	end
 end
 
 -- ---- announcements ----
@@ -296,6 +319,8 @@ end
 function M.attach(m)
 	speech, i18n, hooks, input, config, log, state = m.speech, m.i18n, m.hooks, m.input, m.config, m.log, m.level_state
 	last_key, last_tile, list = nil, nil, nil
+	hooks.on("command_given", "map.command", on_command)
+	hooks.on("turn_end", "map.turn", on_turn_end)
 	local on_map = function() return state.in_level() and state.is_map() end
 	input.layer("map", on_map)
 	local rep = { repeat_ok = true }

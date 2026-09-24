@@ -53,7 +53,6 @@ return {
 	["map.locked"] = "locked",
 	["map.completed"] = "completed",
 	["map.unreachable"] = "no path",
-	["map.dead_end"] = "dead end",
 	["map.no_levels"] = "no levels",
 	["map.list_title"] = "levels, {0}",
 	["map.list_closed"] = "closed",
