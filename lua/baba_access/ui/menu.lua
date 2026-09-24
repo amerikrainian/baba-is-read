@@ -226,6 +226,16 @@ function M.read_all()
 	for i, line in ipairs(lines) do speech.speak(line, i == 1) end
 end
 
+-- The focused item's tooltip (the game sets one only on editor buttons). Never
+-- joined with the focus line; read on its own key.
+function M.details()
+	local state = M.current()
+	if not state then speech.speak(i18n.t("nav.no_menu"), true); return end
+	local button = find_objects(state.target)
+	local tip = button and speech.clean(button.strings[BUTTONTOOLTIP]) or ""
+	speech.speak(tip ~= "" and tip or i18n.t("nav.no_details"), true)
+end
+
 function M.attach(m)
 	mods = m
 	speech, i18n, hooks, config, input, log = m.speech, m.i18n, m.hooks, m.config, m.input, m.log
@@ -234,6 +244,7 @@ function M.attach(m)
 	install_wrappers()
 	input.bind("global", "F5", "menu.repeat", function() M.announce_focus(true) end)
 	input.bind("global", "F7", "menu.read_all", function() M.read_all() end)
+	input.bind("global", "F8", "menu.details", function() M.details() end)
 end
 
 -- For the dev server: a dump of the open menu.

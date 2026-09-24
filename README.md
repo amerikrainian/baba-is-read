@@ -18,6 +18,7 @@ The game's own keys are unchanged. The mod adds:
 |---|---|
 | F5 | Repeat the focused item |
 | F7 | Read the whole menu: title, text, every item |
+| F8 | Read the focused item's tooltip, where the game has one (editor buttons) |
 | F6 | Reload the mod's Lua modules (development) |
 | Ctrl+Shift+S | Mute or unmute speech |
 

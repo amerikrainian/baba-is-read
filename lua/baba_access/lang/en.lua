@@ -27,6 +27,7 @@ return {
 	["nav.no_menu"] = "no menu open",
 	["nav.no_items"] = "no items",
 	["nav.item"] = "unnamed item {0}",
+	["nav.no_details"] = "no details",
 
 	-- Menu titles, by the game's internal menu name. A menu without an entry is
 	-- announced by its on-screen heading text alone.
