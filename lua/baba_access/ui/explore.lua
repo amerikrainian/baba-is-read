@@ -3,9 +3,10 @@
 -- In a level the arrow keys are ours and step a cursor over the tiles, each
 -- step speaking "col, row[, contents]"; the game's own WASD move the player and
 -- are never captured. On the world map the arrows stay the game's (see
--- map.lua). J and K jump to the next and previous object in reading order
--- from the cursor, Home returns the cursor to the player. The cursor parks on
--- the player when a level starts.
+-- map.lua). J and K jump to the next and previous entry in reading order
+-- from the cursor (a parsed rule is one entry, landing on its first word),
+-- Home returns the cursor to the player. The cursor parks on the player when
+-- a level starts and follows the player after every move.
 local M = {}
 
 local speech, i18n, input, state, log
@@ -13,6 +14,7 @@ local speech, i18n, input, state, log
 local cx, cy = 0, 0
 local jump_index = 0
 local parked_for = nil   -- level identity the cursor was last parked for
+local last_you = nil     -- "x,y" of the player last seen, to follow moves
 
 local function say_tile(prefix)
 	local parts = {}
@@ -25,7 +27,7 @@ end
 
 local function park_on_player()
 	local u = state.you_units()[1]
-	if u then cx, cy = u.values[XPOS], u.values[YPOS] end
+	if u then cx, cy = u.values[XPOS], u.values[YPOS]; last_you = cx .. "," .. cy end
 	jump_index = 0
 end
 
@@ -41,22 +43,23 @@ local function step(dx, dy)
 end
 
 local function jump(delta)
-	local objects = state.objects()
-	if #objects == 0 then speech.speak(i18n.t("level.no_objects"), true); return end
+	local exclude = {}
+	for _, u in ipairs(state.you_units()) do exclude[u.fixed] = true end
+	local entries = state.reading_entries(exclude)
+	if #entries == 0 then speech.speak(i18n.t("level.no_objects"), true); return end
 	if jump_index == 0 then
-		-- Start from the cursor: the first object after it in reading order,
+		-- Start from the cursor: the first entry after it in reading order,
 		-- or the last one before it.
-		local after = #objects + 1
-		for i, u in ipairs(objects) do
-			local ux, uy = u.values[XPOS], u.values[YPOS]
-			if uy > cy or (uy == cy and ux > cx) then after = i; break end
+		local after = #entries + 1
+		for i, e in ipairs(entries) do
+			if e.y > cy or (e.y == cy and e.x > cx) then after = i; break end
 		end
 		jump_index = delta > 0 and after - 1 or after
 	end
-	jump_index = ((jump_index - 1 + delta) % #objects) + 1
-	local u = objects[jump_index]
-	cx, cy = u.values[XPOS], u.values[YPOS]
-	say_tile()
+	jump_index = ((jump_index - 1 + delta) % #entries) + 1
+	local e = entries[jump_index]
+	cx, cy = e.x, e.y
+	speech.speak(speech.join({ state.pos_text(cx, cy), e.label }), true)
 end
 
 -- Cursor position, for other modules.
@@ -68,6 +71,17 @@ function M.tick()
 	if key ~= parked_for then
 		parked_for = key
 		park_on_player()
+		return
+	end
+	-- Follow the player: after a move (or an undo) the cursor is where they are.
+	local u = state.you_units()[1]
+	if u then
+		local now = u.values[XPOS] .. "," .. u.values[YPOS]
+		if now ~= last_you then
+			last_you = now
+			cx, cy = u.values[XPOS], u.values[YPOS]
+			jump_index = 0
+		end
 	end
 end
 

@@ -123,6 +123,116 @@ function M.rules()
 	return out
 end
 
+-- The rules the game has parsed from text on screen, each with the text
+-- units spelling it: { words = "baba is you", units = {...}, x =, y = } with
+-- x, y the first word's tile. visualfeatures[i][3] holds one id list per word.
+function M.rules_with_units()
+	local out = {}
+	if type(visualfeatures) ~= "table" then return out end
+	for _, r in ipairs(visualfeatures) do
+		if type(r[1]) == "table" and type(r[3]) == "table" then
+			local words = {}
+			for _, w in ipairs(r[1]) do words[#words + 1] = tostring(w):gsub("^text_", "") end
+			local units_, first = {}, nil
+			for _, group in ipairs(r[3]) do
+				local ids = type(group) == "table" and group or { group }
+				for _, id in ipairs(ids) do
+					local u = mmf.newObject(id)
+					if M.is_visible(u) then
+						units_[#units_ + 1] = u
+						if not first then first = u end
+					end
+				end
+			end
+			if first then
+				out[#out + 1] = { words = table.concat(words, " "), units = units_, x = first.values[XPOS], y = first.values[YPOS] }
+			end
+		end
+	end
+	return out
+end
+
+-- What the reading cursor stops on, in reading order: each parsed rule as one
+-- entry at its first word, every other visible text word on its own, and
+-- every visible object with a rule (scenery when configured). Entries are
+-- { x =, y =, label = }; `exclude` is a set of fixed ids to leave out.
+function M.reading_entries(exclude)
+	exclude = exclude or {}
+	local out = {}
+	local in_rule = {}
+	for _, r in ipairs(M.rules_with_units()) do
+		for _, u in ipairs(r.units) do in_rule[u.fixed] = true end
+		out[#out + 1] = { x = r.x, y = r.y, label = i18n.t("level.text", r.words) }
+	end
+	for _, u in ipairs(units or {}) do
+		if M.is_visible(u) and not exclude[u.fixed] and not in_rule[u.fixed] then
+			local keep = config.get("speak_inert") or not M.is_inert(u)
+			if keep then out[#out + 1] = { x = u.values[XPOS], y = u.values[YPOS], label = M.name_of(u), unit = u } end
+		end
+	end
+	table.sort(out, function(a, b)
+		if a.y ~= b.y then return a.y < b.y end
+		if a.x ~= b.x then return a.x < b.x end
+		return a.label < b.label
+	end)
+	return out
+end
+
+-- The rules the game has parsed from text on screen, each with the text
+-- units spelling it: { words = "baba is you", units = {...}, x =, y = } with
+-- x, y the first word's tile. visualfeatures[i][3] holds one id list per word.
+function M.rules_with_units()
+	local out = {}
+	if type(visualfeatures) ~= "table" then return out end
+	for _, r in ipairs(visualfeatures) do
+		if type(r[1]) == "table" and type(r[3]) == "table" then
+			local words = {}
+			for _, w in ipairs(r[1]) do words[#words + 1] = tostring(w):gsub("^text_", "") end
+			local units_, first = {}, nil
+			for _, group in ipairs(r[3]) do
+				local ids = type(group) == "table" and group or { group }
+				for _, id in ipairs(ids) do
+					local u = mmf.newObject(id)
+					if M.is_visible(u) then
+						units_[#units_ + 1] = u
+						if not first then first = u end
+					end
+				end
+			end
+			if first then
+				out[#out + 1] = { words = table.concat(words, " "), units = units_, x = first.values[XPOS], y = first.values[YPOS] }
+			end
+		end
+	end
+	return out
+end
+
+-- What the reading cursor stops on, in reading order: each parsed rule as one
+-- entry at its first word, every other visible text word on its own, and
+-- every visible object with a rule (scenery when configured). Entries are
+-- { x =, y =, label = }; `exclude` is a set of fixed ids to leave out.
+function M.reading_entries(exclude)
+	exclude = exclude or {}
+	local out = {}
+	local in_rule = {}
+	for _, r in ipairs(M.rules_with_units()) do
+		for _, u in ipairs(r.units) do in_rule[u.fixed] = true end
+		out[#out + 1] = { x = r.x, y = r.y, label = i18n.t("level.text", r.words) }
+	end
+	for _, u in ipairs(units or {}) do
+		if M.is_visible(u) and not exclude[u.fixed] and not in_rule[u.fixed] then
+			local keep = config.get("speak_inert") or not M.is_inert(u)
+			if keep then out[#out + 1] = { x = u.values[XPOS], y = u.values[YPOS], label = M.name_of(u), unit = u } end
+		end
+	end
+	table.sort(out, function(a, b)
+		if a.y ~= b.y then return a.y < b.y end
+		if a.x ~= b.x then return a.x < b.x end
+		return a.label < b.label
+	end)
+	return out
+end
+
 -- Every non-inert object except the player's, in reading order, for jumping.
 function M.objects()
 	local out = {}

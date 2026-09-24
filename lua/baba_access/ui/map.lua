@@ -198,50 +198,42 @@ end
 
 -- ---- the reading cursor ----
 
--- Everything worth stopping on: visible level icons, text, and any object with
--- a rule; scenery only when configured. Reading order.
+-- Everything worth stopping on, in reading order: visible level icons with
+-- their status, each parsed rule as one entry, other text and any object with
+-- a rule (scenery when configured). Entries are { x =, y =, label = }.
 function M.objects()
-	local out = {}
+	local exclude = {}
 	local cursor = M.cursor_unit()
+	if cursor then exclude[cursor.fixed] = true end
 	for _, u in ipairs(units or {}) do
-		local file = u.strings[U_LEVELFILE] or ""
-		local keep
-		if not state.is_visible(u) then keep = false
-		elseif file ~= "" then keep = (u.values[COMPLETED] or 0) >= 1
-		elseif cursor and u.fixed == cursor.fixed then keep = false
-		else keep = config.get("speak_inert") or not state.is_inert(u) end
-		if keep then out[#out + 1] = u end
+		if (u.strings[U_LEVELFILE] or "") ~= "" then exclude[u.fixed] = true end
+	end
+	local out = state.reading_entries(exclude)
+	for _, l in ipairs(M.levels()) do
+		out[#out + 1] = { x = l.x, y = l.y, label = speech.join({ l.name, M.status_word(l.done) }) }
 	end
 	table.sort(out, function(a, b)
-		if a.values[YPOS] ~= b.values[YPOS] then return a.values[YPOS] < b.values[YPOS] end
-		return a.values[XPOS] < b.values[XPOS]
+		if a.y ~= b.y then return a.y < b.y end
+		if a.x ~= b.x then return a.x < b.x end
+		return a.label < b.label
 	end)
 	return out
 end
 
-local function describe_object(u)
-	local x, y = u.values[XPOS], u.values[YPOS]
-	if (u.strings[U_LEVELFILE] or "") ~= "" then
-		return speech.join({ state.pos_text(x, y), speech.clean(u.strings[U_LEVELNAME] or ""), M.status_word(u.values[COMPLETED] or 0) })
-	end
-	return speech.join({ state.pos_text(x, y), state.name_of(u) })
-end
-
 local function read_jump(delta)
-	local objects = M.objects()
-	if #objects == 0 then speech.speak(i18n.t("level.no_objects"), true); return end
+	local entries = M.objects()
+	if #entries == 0 then speech.speak(i18n.t("level.no_objects"), true); return end
 	if read_index == 0 then
-		local after = #objects + 1
-		for i, u in ipairs(objects) do
-			local ux, uy = u.values[XPOS], u.values[YPOS]
-			if uy > ry or (uy == ry and ux > rx) then after = i; break end
+		local after = #entries + 1
+		for i, e in ipairs(entries) do
+			if e.y > ry or (e.y == ry and e.x > rx) then after = i; break end
 		end
 		read_index = delta > 0 and after - 1 or after
 	end
-	read_index = ((read_index - 1 + delta) % #objects) + 1
-	local u = objects[read_index]
-	rx, ry = u.values[XPOS], u.values[YPOS]
-	speech.speak(describe_object(u), true)
+	read_index = ((read_index - 1 + delta) % #entries) + 1
+	local e = entries[read_index]
+	rx, ry = e.x, e.y
+	speech.speak(speech.join({ state.pos_text(rx, ry), e.label }), true)
 end
 
 local function read_home()
