@@ -9,7 +9,7 @@
 //   baba_stop()                    -> boolean
 //   baba_log(text)                 -> nothing
 //   baba_keycap_install()          -> boolean
-//   baba_capture(vk, on)           -> nothing
+//   baba_capture(vk, mask)         -> nothing (mask: bit 1 << mods per captured modifier combination)
 //   baba_poll_key()                -> packed event or 0
 //   baba_pretend_focus(on)         -> nothing (keys are processed while the game is in the background)
 //   baba_click(x, y, right, phase) -> boolean: a mouse click at client coordinates (phase 1 press, 2 release, 0 both)

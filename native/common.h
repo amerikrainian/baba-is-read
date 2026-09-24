@@ -28,7 +28,7 @@ uint64_t ba_speech_history(uint64_t since, char *buf, size_t cap);
 
 // keycap.c
 int ba_keycap_install(void);
-void ba_keycap_set(int vk, int on);
+void ba_keycap_set(int vk, int mask); // mask: bit (1 << mods) per captured modifier combination
 int ba_keycap_get(int vk);
 int ba_keycap_poll(void); // packed event or 0
 int ba_keycap_post(int vk, int down); // synthetic key through the game window

@@ -23,6 +23,9 @@ int ba_iat_hook(const char *dll_name, const char *func_name, void *replacement, 
 
 static HWND g_hwnd;
 static WNDPROC g_orig_proc;
+// Per virtual key, a bit per modifier combination (1 << mods) that is captured,
+// so a chord like Ctrl+Shift+S takes S only while those modifiers are held and
+// a plain S still reaches the game.
 static unsigned char g_capture[256];
 static unsigned char g_synth[256];       // virtually held keys (dev server)
 static unsigned char g_engine_down[256]; // keys whose press reached the engine and is not yet released
@@ -67,7 +70,9 @@ static GetKeyState_t o_GetKeyState;
 static GetKeyboardState_t o_GetKeyboardState;
 static GetRawInputData_t o_GetRawInputData;
 
-static int masked(int vk) { return vk >= 0 && vk < 256 && g_capture[vk]; }
+static int current_mods(void);
+static int captured_now(int vk) { return vk >= 0 && vk < 256 && ((g_capture[vk] >> current_mods()) & 1); }
+static int masked(int vk) { return captured_now(vk); }
 static int synth(int vk) { return vk >= 0 && vk < 256 && g_synth[vk]; }
 
 // Synthetic click state: while a click is in flight the cursor reads at its
@@ -207,9 +212,12 @@ static LRESULT CALLBACK ba_wndproc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         InterlockedIncrement(&g_calls_wndproc_keys);
         int vk = (int)(wp & 0xff);
         int down = (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN) ? 1 : 0;
-        if (g_capture[vk]) {
+        int mods = current_mods();
+        // A release is taken whenever any combination of the key is captured, so a
+        // chord's release never reaches the engine as a stray key-up.
+        if (down ? ((g_capture[vk] >> mods) & 1) : (g_capture[vk] != 0)) {
             int repeat = down && (lp & (1 << 30)) ? 1 : 0;
-            queue_push(vk | (current_mods() << 8) | (down << 12) | (repeat << 13));
+            queue_push(vk | (mods << 8) | (down << 12) | (repeat << 13));
             // A release must reach the engine if it saw the press, or its key state sticks.
             if (!down && g_engine_down[vk]) { g_engine_down[vk] = 0; break; }
             return 0; // swallowed: the game never sees it
@@ -258,11 +266,11 @@ int ba_keycap_install(void) {
 
 HWND ba_keycap_hwnd(void) { return g_hwnd; }
 
-void ba_keycap_set(int vk, int on) {
+void ba_keycap_set(int vk, int mask) {
     if (vk < 1 || vk > 255) return;
-    g_capture[vk] = on ? 1 : 0;
+    g_capture[vk] = (unsigned char)(mask & 0xff);
     // Taking a key the engine currently holds: release it there first.
-    if (on && g_engine_down[vk] && g_hwnd) ba_keycap_post(vk, 0);
+    if (mask && g_engine_down[vk] && g_hwnd) ba_keycap_post(vk, 0);
 }
 
 int ba_keycap_get(int vk) {
