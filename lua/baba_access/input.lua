@@ -16,7 +16,7 @@ local M = {}
 local bridge = nil
 local capture_ready = false
 local layers = {}       -- ordered bottom to top
-local captured = {}     -- vk -> true while the native side captures it
+local captured = {}     -- vk -> modifier mask the native side captures
 
 local VK = {
 	backspace = 8, tab = 9, enter = 13, escape = 27, space = 32,
@@ -70,18 +70,20 @@ local function ensure_capture()
 end
 
 -- The capture set follows the active layers: a key is taken from the game only
--- while some active layer binds it, so a modal layer's arrows return to the game
--- the moment the layer deactivates. sync_capture() runs once per frame.
+-- while some active layer binds it, and only with the modifiers a binding
+-- names (a bit per modifier combination), so Ctrl+Shift+S leaves a plain S to
+-- the game, and a modal layer's arrows return to the game the moment the layer
+-- deactivates. sync_capture() runs once per frame.
 local function sync_capture()
 	if not capture_ready or not bridge then return end
 	local wanted = {}
 	for _, l in ipairs(layers) do
 		if l.active() then
-			for _, b in pairs(l.binds) do wanted[b.vk] = true end
+			for _, b in pairs(l.binds) do wanted[b.vk] = (wanted[b.vk] or 0) | (1 << b.mods) end
 		end
 	end
-	for vk in pairs(wanted) do
-		if not captured[vk] then captured[vk] = true; bridge.capture(vk, 1) end
+	for vk, mask in pairs(wanted) do
+		if captured[vk] ~= mask then captured[vk] = mask; bridge.capture(vk, mask) end
 	end
 	for vk in pairs(captured) do
 		if not wanted[vk] then captured[vk] = nil; bridge.capture(vk, 0) end

@@ -178,7 +178,7 @@ static void handle_keys(SOCKET s) {
     used = strlen(out);
     out[used++] = 10;
     for (int vk = 1; vk < 256 && used + 8 < sizeof out; vk++)
-        if (ba_keycap_get(vk)) used += (size_t)snprintf(out + used, sizeof out - used, "%d\n", vk);
+        if (ba_keycap_get(vk)) used += (size_t)snprintf(out + used, sizeof out - used, "%d %d\n", vk, ba_keycap_get(vk));
     respond(s, 200, out, used);
 }
 

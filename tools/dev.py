@@ -150,11 +150,14 @@ def cmd_keys(args):
     status, text = request("/keys")
     names = {v: k for k, v in VK.items()}
     for line in text.splitlines():
-        if not line.strip().isdigit():
+        if not line.strip() or not line.split()[0].isdigit():
             print(line)
             continue
-        vk = int(line)
-        print(vk, names.get(vk, "?"))
+        vk, mask = (line.split() + ["0"])[:2]
+        vk = int(vk)
+        combos = [m for m in range(8) if int(mask) >> m & 1]
+        words = ["+".join(w for w, bit in (("shift", 1), ("ctrl", 2), ("alt", 4)) if m & bit) or "plain" for m in combos]
+        print(vk, names.get(vk, "?"), ", ".join(words))
     return 0
 
 
