@@ -1,20 +1,6 @@
 # Baba Is Read
 
-A screen-reader accessibility mod for Baba Is You (Steam, Windows). Speech goes to NVDA, JAWS or SAPI through Prism.
-
-## What works
-
-- Every menu: the menu name and its on-screen text when it opens, then the focused item as you move. Items read as label, role, value or state, and position, for example "Music volume, slider, 70, 1 of 17" or "Enable grid, toggle, off, 7 of 17".
-- Menus laid out as a grid, such as the main menu, read as one list: Up and Down walk every item in reading order.
-- Sliders and toggles keep the game's own keys: Left and Right adjust a slider, Enter flips a toggle, and the new value is spoken.
-
-- Dialogs without a cursor, such as the restart confirmation, get one: Up and Down choose a button, Enter presses it.
-- The pause menu's rules are a strip of items above the buttons: Up from the first button lands on "Rules, baba is you, 1 of 5", Left and Right walk the rules, Down returns to the buttons. Enter does nothing on a rule.
-- In a level: the level name, its rules and your position when it starts; after each move the new position as "column, row" (column first, like chess notation) plus whatever shares the tile, or "blocked, wall"; rule changes as "new: rock is win" or "gone: wall is stop"; what happened to other objects, grouped with counts: "pushed rock", "pulled key", "shifted rock", "moved keke 2", "teleported baba", "sank rock, water", "defeated baba", "melted ice", "broke wall", "exploded bomb", "ate rock", "opened door", "rock 3 became baba", "made keke", "bonus"; the game's "Infinite loop" and "Too complex!"; sign text when you stand next to a sign; auto turns ("level is auto") when you moved; win, undo, "the end", and "no you". The level starts with its number and name ("Level 2, now what is this?"), its subtitle if it has one, the rules and where you are. A second player ("you2") counts as you.
-- Exploration cursor: in a level the arrow keys read the tiles, each step "column, row, contents", while nothing in the level moves. WASD move you, as the game always allowed. Period and comma jump to the next and previous entry of the current reading category, wrapping around; [ and ] switch the category between objects (everything but text, terrain such as walls and water, and you), rules (each parsed rule as one entry plus loose text words) markers and all; a category with nothing in it is skipped. Within a category, Shift+period and Shift+comma narrow to one kind ("skull, 3"), or back to all kinds. Ctrl+arrows skip a run of identical tiles, landing on the first tile that reads differently (the wall past a stretch of floor, the floor past a stretch of wall). Slash places a marker on the cursor's tile ("marker 1", "marker 2", ... for the level), Shift+slash clears the one there, Ctrl+Shift+slash clears them all; a marker is read with its tile. Home returns the cursor to you. T reads the rules, H where you are, L the object counts.
-
-- The credits (main menu and the ending): "Credits" on entry, then every line spoken as it scrolls in. Space leaves (Escape does not).
-- The world map: on entry "map. 3 open, 10 locked, 0 completed", what changed since the last visit ("new: volcano", "revealed: off limits", "gate opened, 12, 5"), the progress counters ("5 of 225 levels, 0 of 12 areas, 0 of 3 bonus") and the tile under the cursor. Level names carry the number their icon shows ("2. where do i go?") and a bonus mark; a closed gate is read with what it needs, also from the tile beside it ("gate right, needs 5 areas"); the control hints around the start read as "hint, Wait"; "Map clear!" when the game plays it. The arrows walk the game's cursor along the paths, each tile read as "column, row" with the level there and its status, or the directions that continue. L lists every visible level with its status, reachable ones first; Enter on a reachable one moves the cursor there, and Enter again starts it. Period and comma read the map without moving the cursor, [ and ] switching between levels, rules and all; Home returns the reading position to the cursor.
+A screen-reader accessibility mod for [Baba Is You](https://store.steampowered.com/app/736260/Baba_Is_You/).
 
 ## Keys
 
@@ -23,8 +9,6 @@ Press F1 anywhere for the list of keys that work right there; Enter on a row doe
 | Key | Action |
 |---|---|
 | F1 | Keys here: the keys that do something right where you are, the mod's and the game's own (as you have bound them), most particular first, as "label, keys, n of m". Up and Down walk the rows, Enter does the row's action, Escape or F1 closes. Every other key is held while it is open. A key that would do nothing right now is not listed and does nothing |
-| F5 | Repeat the focused item |
-| F8 | Read the focused item's tooltip, where the game has one (editor buttons) |
 | Arrows | In a level: step the exploration cursor (WASD move you). On the map: the game's cursor |
 | Ctrl+Arrows | In a level: skip identical tiles, landing on the first that reads differently |
 | Period, Comma | Next and previous entry of the reading category, wrapping around |
@@ -38,8 +22,6 @@ Press F1 anywhere for the list of keys that work right there; Enter on a row doe
 | T, H, L | In a level: the rules, where you are, the object counts |
 | F | In a level: the facing of what is on the cursor's tile ("baba, right"), for objects whose sprite shows it |
 | L, H | On the map: the level list (Up, Down, Enter, Escape), the progress counters |
-| F6 | Reload the mod's Lua modules (development) |
-| Ctrl+Shift+S | Mute or unmute speech |
 
 ## Install
 
@@ -47,66 +29,14 @@ Download `BabaIsReadInstaller.exe` from the
 [latest release](https://github.com/amerikrainian/baba-is-read/releases) and run it. It finds your
 Steam install, downloads the mod, and can later update, repair, or uninstall it. Manual alternative:
 extract the release zip (`BabaIsRead-vX.Y.Z.zip`) over the game folder (the one holding
-`Baba Is You.exe`); it puts `baba_is_read.lua` and a `baba_is_read` folder into `Data\Lua`.
+`Baba Is You.exe`).
 
 Launch the game through Steam afterwards. The title screen says "Baba Is Read loaded" when the mod
 is running; press F1 anywhere for the keys. To update, run the installer again and choose Update,
 or extract the newer zip over the game folder. To remove the mod, the installer's Uninstall puts
 the game folder back as it was; by hand, delete `Data\Lua\baba_is_read.lua` and `Data\Lua\baba_is_read`.
 
-## Install (development)
-
-Requirements: the game on Steam, gcc (scoop or MSYS2), and `uv` for the Python driver.
-
-```
-.\build.ps1
-```
-
-This compiles the native bridge and copies the mod into `<game>\Data\Lua`. The game folder is found through `-GameDir`, `BABA_DIR`, or the Steam default. Launch the game normally afterwards; the title screen says "Baba Is Read loaded".
-
-## Layout
-
-- `native/` – the bridge DLL: speech (Prism), logging, key capture, focus handling, and the dev HTTP server. `luastack.h` explains how a DLL talks to the game's Lua without the Lua C API.
-- `lua/baba_is_read.lua` – bootstrap the game runs at startup.
-- `lua/baba_is_read/` – the mod: `main` wiring, `bridge`, `hooks`, `speech`, `i18n` and `lang/`, `input`, `config`, `dev`, and `ui/` for the menu announcer, list navigation and per-menu overrides.
-- `tools/dev.py` – drives the running game from a terminal (see below).
-- `third_party/prism/` – vendored Prism release.
-
-## Releases
-
-```
-.\build_release.ps1              # releases\BabaIsRead-v<version>.zip, the version from lua\baba_is_read\version.lua
-.\build-installer.ps1            # releases\BabaIsReadInstaller.exe (installer\, Rust + wxWidgets: cargo, libclang, ninja)
-.\test-installer.ps1             # the installer's unit tests
-.\create-release.ps1 vX.Y.Z      # the GitHub release for the pushed tag, the CHANGELOG.md section as notes
-```
-
-Bump `version.lua` and add the `## VX.Y.Z` section to `CHANGELOG.md` first; the tag, the zip name and
-the installer's version check all follow that one string. The installer is adapted from the
-[Non-Visual Calculus](https://github.com/rashadnaqeeb/NonVisualCalculus) installer by Rashad Naqeeb
-(MIT). `installer\src\core\paths.rs` holds the game facts it relies on (the exe and folder names,
-`Data\modsupport.lua` as the install marker, the mod's paths, the releases URL). A dev box drives it
-without the elevation prompt through `cargo run --release --example cli` in `installer\`, with
-`BABA_DIR` pointing at a game folder and `BABA_IS_READ_INSTALLER_RELEASES_URL` at a local copy of
-the releases feed.
-
-## Development loop
-
-```
-uv run python tools/dev.py launch     # starts the game, waits for the dev server
-uv run python tools/dev.py state      # where the game is
-uv run python tools/dev.py key down down enter
-uv run python tools/dev.py speech --tail 10
-uv run python tools/dev.py menu       # dump of the open menu
-uv run python tools/dev.py eval -e 'return BabaIsRead.config.all()'
-uv run python tools/dev.py reload     # after editing Lua; a DLL change needs a relaunch
-uv run python tools/dev.py kill
-```
-
-Synthetic keys work while the game is in the background; nothing brings its window forward. Run the game windowed while developing: a fullscreen window minimizes when it loses focus, and a minimized window drops the synthetic mouse clicks that dialogs need. Check `state` before posting Enter: the title screen advances on its own once a key is pressed, and Enter on the main menu starts the game.
-
-The session log is `%LOCALAPPDATA%\BabaIsRead\baba_is_read.log`, and `dev.py log --grep speech` shows what was said.
-
 ## Localization
 
-Mod strings live in `lua/baba_is_read/lang/<code>.lua`, keyed like `role.slider` or `menu.settings`, with `{0}` placeholders. The language follows the game's own setting and falls back to English; a missing key is spoken as the key. Button labels are the game's own text, so they are already in the game's language.
+Mod strings live in `lua/baba_is_read/lang/<code>.lua`, keyed like `role.slider` or `menu.settings`, with `{0}` placeholders. The language follows the game's own setting and falls back to English; a missing key is spoken as the key.
+
