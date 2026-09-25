@@ -12,9 +12,14 @@
 --   label = a key in the game's language files, read through langtext, used
 --           when the item has no text of its own
 --   hidden_text = true to skip the menu's static text on entry
+--   list = true or false to force list navigation on or off (menu_nav)
 local M = {}
 
 M.menus = {
+	-- The static text is the rules, which menu_nav reads as a strip of items.
+	pause = {
+		hidden_text = true,
+	},
 	settings = {
 		items = {
 			music = { kind = "slider", label = "settings_music" },

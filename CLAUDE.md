@@ -125,7 +125,10 @@ sound, scrolling and rendering stay the engine's. `ui/menu_nav.lua` takes the ar
 with a multi-column row (the main menu is two columns wide) and walks the flattened items in reading
 order by writing the cursor; any row holding a slider hands the arrows back so Left/Right adjust it.
 Positions are "n of m" over the flattened list there, over the column elsewhere. A menu goes back to
-native navigation with `list = false` in `menu_overrides`. Levels will get a virtual cursor of ours
+native navigation with `list = false` in `menu_overrides`. `menu_nav` can also add virtual rows of ours
+above a menu's buttons (`providers[menu]`, a strip read with Left/Right, Up/Down stepping between rows
+and buttons, Enter/Space captured while a virtual item has the focus since the engine's cursor stays on
+a button): the pause menu's rules, whose static text is hidden. Levels will get a virtual cursor of ours
 (explore mode: a modal layer capturing the arrows so Baba stays put), announcements from the turn
 hooks, and rules from the `features` tables.
 
@@ -146,7 +149,7 @@ hooks, and rules from the `features` tables.
   layers every frame, dispatch on key down, `repeat_ok`), `config.lua` (defaults; `[baba_access]` in
   the game's settings INI through `MF_read`/`MF_store`), `dev.lua` (runs the command file, replies).
 - `lua/baba_access/ui/`: `menu.lua` (`current()`, `describe(state)`, `static_text`, `title`, `tick`,
-  `read_all`, `details`, `dump`), `menu_nav.lua` (`applies`, `active`, `items`, `index`),
+  `details`, `dump`), `menu_nav.lua` (`applies`, `active`, `items`, `index`),
   `menu_overrides.lua` (per menu: `items[id] = {kind = toggle|radio|slider|button, label = <game
   lang key>}`, `default_kind`, `list`, `hidden_text`). A new screen is a module with `attach(mods)`
   and optional `tick(frame)`, registered in `main.load_modules` and ticked from `main.tick`.
@@ -169,7 +172,7 @@ hooks, and rules from the `features` tables.
   they can review announcements without running it.
 
 ## Keys (all through the capture; the game never sees them)
-F5 repeats the focused item, F7 reads the whole menu (title, static text, every item row by row),
+F5 repeats the focused item,
 F8 the focused item's tooltip (the game sets `BUTTONTOOLTIP` only on editor toolbar, quick-menu and
 object-palette buttons; play menus have none), F6 reloads, Ctrl+Shift+S mutes. In a grid menu the
 arrows are ours (`menu_list` layer); in a dialog the arrows, Enter and Space (`dialog` layer). In a
@@ -231,7 +234,7 @@ are ours because the game draws most menus without a name.
 2. **(done)** Dev server and `tools/dev.py`.
 3. **(done)** Speech layer conventions.
 4. **(done)** Menus: announcer, list navigation for grids, sliders, toggles, radio kinds via
-   overrides, dialogs with a focus of ours and synthetic clicks, F5/F7/F8. Open: text entry (`name`
+   overrides, dialogs with a focus of ours and synthetic clicks, F5/F8. Open: text entry (`name`
    menu, `text_input_ok` hook), scrolling lists (`ALLOWSCROLL` menus such as the level list), the
    languages menu's radio state, whether "button" after every item stays (config `speak_roles`).
 5. **(done, first pass)** In-level core (`ui/level.lua`): level start from the `level_start` hook

@@ -12,6 +12,9 @@
 --
 -- Item readout order follows guildrun: label, role, value or state, disabled,
 -- position. Roles and labels the game does not carry come from menu_overrides.
+-- A menu may also carry virtual rows of ours (menu_nav: the pause menu's
+-- rules); a focused virtual item is described by its text and position in
+-- its row, with the row's label spoken on the way in.
 local M = {}
 
 local mods, speech, i18n, hooks, config, input, log, overrides
@@ -58,7 +61,9 @@ function M.current()
 	local build = generaldata.strings[BUILD]
 	local ok, target, xdim, ydim = pcall(hooks.original("menu_position"), name, x, y, build)
 	if not ok then return nil end
-	return { name = name, x = x, y = y, xdim = xdim or 0, ydim = ydim or 0, target = target or "" }
+	local state = { name = name, x = x, y = y, xdim = xdim or 0, ydim = ydim or 0, target = target or "" }
+	if mods.menu_nav then state.virtual = mods.menu_nav.virtual_focus(name) end
+	return state
 end
 
 -- Finds the objects that make up an item: its button and, for sliders, the bar.
@@ -81,8 +86,18 @@ local function find_objects(target)
 	return button, slider
 end
 
--- Describes the item at a state. Returns spoken text, an identity key, and the value part.
+-- Describes the item at a state. Returns spoken text, an identity key, and the
+-- value part; for a virtual item also its row label.
 function M.describe(state, with_position)
+	local vf = state.virtual
+	if vf then
+		local parts = { vf.text }
+		if with_position and config.get("speak_positions") and vf.count > 1 then
+			parts[#parts + 1] = i18n.t("nav.position", vf.index, vf.count)
+		end
+		local key = table.concat({ state.name, "virtual", vf.row, vf.index, vf.text }, "|")
+		return speech.join(parts), key, nil, vf.label
+	end
 	local ov = overrides.item(state.name, state.target)
 	local button, slider = find_objects(state.target)
 
@@ -160,7 +175,23 @@ function M.title(name)
 	return nil
 end
 
+-- The focus line: a virtual item's row label is spoken when the row is
+-- entered (`always` forces it, for F5).
+local function focus_line(state, always)
+	local text, key, value, label = M.describe(state, true)
+	if label and (always or not last or last.name ~= state.name or last.vrow ~= state.virtual.row) then
+		text = speech.join({ label, text })
+	end
+	return text, key, value
+end
+
+local function remember(state, key, value)
+	last = { name = state.name, target = state.target, x = state.x, y = state.y, key = key, value = value,
+		vrow = state.virtual and state.virtual.row or nil }
+end
+
 local function announce_entry(state)
+	if mods.menu_nav then mods.menu_nav.reset(); state.virtual = nil end
 	local title = M.title(state.name)
 	local lines = {}
 	if title then lines[#lines + 1] = speech.join({ title, i18n.t("role.menu") }) end
@@ -170,7 +201,7 @@ local function announce_entry(state)
 	local text, key, value = M.describe(state, true)
 	lines[#lines + 1] = text
 	for i, line in ipairs(lines) do speech.speak(line, i == 1) end
-	last = { name = state.name, target = state.target, x = state.x, y = state.y, key = key, value = value }
+	remember(state, key, value)
 end
 
 function M.announce_focus(force)
@@ -180,9 +211,9 @@ function M.announce_focus(force)
 		last = nil
 		return
 	end
-	local text, key, value = M.describe(state, true)
+	local text, key, value = focus_line(state, true)
 	speech.speak(text, true)
-	last = { name = state.name, target = state.target, x = state.x, y = state.y, key = key, value = value }
+	remember(state, key, value)
 end
 
 function M.tick(frame)
@@ -195,35 +226,14 @@ function M.tick(frame)
 		announce_entry(state)
 		return
 	end
-	local text, key, value = M.describe(state, true)
+	local text, key, value = focus_line(state, false)
 	if key ~= last.key then
 		speech.speak(text, true)
-		last = { name = state.name, target = state.target, x = state.x, y = state.y, key = key, value = value }
+		remember(state, key, value)
 	elseif value ~= last.value then
 		speech.speak(value or "", true)
 		last.value = value
 	end
-end
-
--- Reads the whole menu: title, static text, then every item row by row.
-function M.read_all()
-	local state = M.current()
-	if not state then speech.speak(i18n.t("nav.no_menu"), true); return end
-	local lines = {}
-	local title = M.title(state.name)
-	if title then lines[#lines + 1] = title end
-	for _, t in ipairs(M.static_text(state.name)) do lines[#lines + 1] = t end
-	local mp = hooks.original("menu_position")
-	local build = generaldata.strings[BUILD]
-	for y = 0, state.ydim - 1 do
-		local _, xdim = mp(state.name, 0, y, build)
-		for x = 0, (xdim or 1) - 1 do
-			local target = mp(state.name, x, y, build)
-			local item = { name = state.name, x = x, y = y, xdim = xdim, ydim = state.ydim, target = target }
-			lines[#lines + 1] = M.describe(item, false)
-		end
-	end
-	for i, line in ipairs(lines) do speech.speak(line, i == 1) end
 end
 
 -- The focused item's tooltip (the game sets one only on editor buttons). Never
@@ -243,7 +253,6 @@ function M.attach(m)
 	last = nil
 	install_wrappers()
 	input.bind("global", "F5", "menu.repeat", function() M.announce_focus(true) end)
-	input.bind("global", "F7", "menu.read_all", function() M.read_all() end)
 	input.bind("global", "F8", "menu.details", function() M.details() end)
 end
 
@@ -251,7 +260,8 @@ end
 function M.dump()
 	local state = M.current()
 	if not state then return { menu = editor and editor.strings[MENU], inmenu = generaldata2 and generaldata2.values[INMENU] } end
-	local out = { state = state, focus = M.describe(state, true), text = M.static_text(state.name), rows = {} }
+	local out = { state = state, focus = M.describe(state, true), text = M.static_text(state.name), rows = {},
+		virtual = mods.menu_nav and mods.menu_nav.virtual_rows(state.name) or {} }
 	local mp = hooks.original("menu_position")
 	local build = generaldata.strings[BUILD]
 	for y = 0, state.ydim - 1 do
