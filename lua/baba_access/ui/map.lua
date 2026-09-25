@@ -95,15 +95,15 @@ end
 
 -- The icon's name with the number the game draws on it: "2. where do i go?".
 -- Numbered, lettered and "Extra n" styles only; a custom id (the areas, whose
--- names already start with their number) and an id equal to the name ("?")
--- are left alone.
+-- names already start with their number) and an id equal to the name ("?",
+-- the "Map" exit icon of an area, named "map") are left alone.
 function M.level_label(u)
 	local name = speech.clean(u.strings[U_LEVELNAME] or "")
 	local style = u.values[VISUALSTYLE] or -1
 	if style < 0 or type(getlevelid) ~= "function" then return name end
 	local ok, id = pcall(getlevelid, u.values[VISUALLEVEL], style, u.strings[U_LEVELFILE])
 	id = ok and speech.clean(tostring(id or "")) or ""
-	if id == "" or id == name or name:sub(1, #id + 1) == id .. "." then return name end
+	if id == "" or id:lower() == name:lower() or name:lower():sub(1, #id + 1) == id:lower() .. "." then return name end
 	return i18n.t("map.level_label", id, name)
 end
 
@@ -543,11 +543,11 @@ local function list_close()
 	speech.speak(i18n.t("map.list_closed"), true)
 end
 
--- H: the cursor's tile, then the progress counters.
+-- H: the progress counters (the cursor's tile is re-read with Home, its
+-- coordinates with C).
 function M.say_where()
-	local cursor = M.cursor_unit()
-	if not cursor then speech.speak(i18n.t("level.none"), true); return end
-	speech.speak_lines({ M.describe_cursor(cursor), M.progress_line() })
+	if not (state.in_level() and state.is_map()) then speech.speak(i18n.t("level.none"), true); return end
+	speech.speak(M.progress_line() or "", true)
 end
 
 function M.attach(m)

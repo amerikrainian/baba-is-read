@@ -197,7 +197,7 @@ with sighted play, decided), C the player's coordinates alone, T the rules, H wh
 world map (`map` layer, `state.is_map()`): the arrows are the GAME's and walk its cursor, every tile
 spoken; period/comma are a reading cursor over the map with categories levels, rules, all, and Home
 returns it to the game cursor, C the game cursor's coordinates alone; L opens the level
-list (`map_list` layer: Up/Down, Enter, Escape or L), H reads the cursor's tile. **Decided: the
+list (`map_list` layer: Up/Down, Enter, Escape or L), H the progress counters. **Decided: the
 game's map cursor is moved by the mod only through the list, and only onto a reachable open
 level** (BFS over passable tiles from where it stands, the engine's own passability rule): the map
 cursor is game state, and placing it anywhere else steps over closed gates and solves the maps that
