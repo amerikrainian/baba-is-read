@@ -22,7 +22,7 @@ Press F1 anywhere for the list of keys that work right there; Enter on a row doe
 
 | Key | Action |
 |---|---|
-| F1 | Keys here: the keys that do something right where you are, most particular first, as "label, keys, n of m". Up and Down walk the rows, Enter does the row's action, Escape or F1 closes. Every other key is held while it is open |
+| F1 | Keys here: the keys that do something right where you are, the mod's and the game's own (as you have bound them), most particular first, as "label, keys, n of m". Up and Down walk the rows, Enter does the row's action, Escape or F1 closes. Every other key is held while it is open. A key that would do nothing right now is not listed and does nothing |
 | F5 | Repeat the focused item |
 | F8 | Read the focused item's tooltip, where the game has one (editor buttons) |
 | Arrows | In a level: step the exploration cursor (WASD move you). On the map: the game's cursor |

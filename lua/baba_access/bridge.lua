@@ -16,6 +16,9 @@ local EXPORTS = {
 	"baba_keycap_install", "baba_capture", "baba_poll_key", "baba_pretend_focus", "baba_click", "baba_client_size",
 	"baba_dev_start", "baba_dev_poll", "baba_dev_reply",
 }
+-- Exports a DLL may lack (added later than the running build): bound when
+-- present, nil otherwise, so an older DLL still loads.
+local OPTIONAL = { "baba_post_key" }
 
 M.loaded = false
 M.error = nil
@@ -38,6 +41,10 @@ function M.load()
 			return false, M.error
 		end
 		fns[name:sub(6)] = f -- strip "baba_"
+	end
+	for _, name in ipairs(OPTIONAL) do
+		local f = bind(name)
+		if f then fns[name:sub(6)] = f end
 	end
 
 	-- Layout self-test. Each check exercises one assumption of luastack.h.

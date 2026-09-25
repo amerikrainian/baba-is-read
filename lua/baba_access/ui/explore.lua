@@ -273,7 +273,7 @@ local function place_marker()
 end
 
 -- Shift+slash: clear the marker on the cursor's tile (the last placed there
--- if several).
+-- if several); nothing to clear, nothing said (the key help leaves it out).
 local function clear_marker()
 	local s = marker_store()
 	for i = #s.list, 1, -1 do
@@ -285,26 +285,40 @@ local function clear_marker()
 			return
 		end
 	end
-	speech.speak(i18n.t("marker.none"), true)
 end
+
+local function has_marker_here() return #markers_at(cx, cy) > 0 end
+local function has_markers() return #marker_store().list > 0 end
 
 -- Ctrl+Shift+slash: clear every marker of the level; numbering starts over.
 local function clear_all_markers()
+	if not has_markers() then return end
 	markers[level_key()] = nil
 	jump_index = 0
 	speech.speak(i18n.t("marker.all_cleared"), true)
 end
 
--- F: the facing of each object on the cursor's tile that shows one.
-local function say_facing()
+-- F: the facing of each object on the cursor's tile that shows one; silent
+-- (and unlisted) where nothing does.
+local function facing_lines()
 	local lines = {}
 	for _, u in ipairs(state.units_at(cx, cy)) do
 		if state.shows_facing(u) then
 			lines[#lines + 1] = speech.join({ state.name_of(u), state.facing_word(u) })
 		end
 	end
-	if #lines == 0 then lines[1] = i18n.t("level.no_facing") end
-	speech.speak_lines(lines)
+	return lines
+end
+
+local function say_facing()
+	speech.speak_lines(facing_lines())
+end
+
+-- Whether Shift+period/comma have kinds to cycle here: not in rules, and
+-- some entry present.
+local function has_kinds()
+	if CATEGORIES[category] == "rules" then return false end
+	return #kinds_now() > 0
 end
 
 -- Cursor position, for other modules.
@@ -345,15 +359,16 @@ function M.attach(m)
 	input.bind("explore", "ctrl+down", "explore.skip_down", function() skip(0, 1) end, rep)
 	input.bind("explore", "period", "explore.next", function() jump(1) end, rep)
 	input.bind("explore", "comma", "explore.prev", function() jump(-1) end, rep)
-	input.bind("explore", "shift+period", "explore.next_kind", function() switch_kind(1) end, rep)
-	input.bind("explore", "shift+comma", "explore.prev_kind", function() switch_kind(-1) end, rep)
+	local kinds = { repeat_ok = true, when = has_kinds }
+	input.bind("explore", "shift+period", "explore.next_kind", function() switch_kind(1) end, kinds)
+	input.bind("explore", "shift+comma", "explore.prev_kind", function() switch_kind(-1) end, kinds)
 	input.bind("explore", "rightbracket", "explore.next_category", function() switch_category(1) end)
 	input.bind("explore", "leftbracket", "explore.prev_category", function() switch_category(-1) end)
 	input.bind("explore", "home", "explore.home", function() park_on_player(); say_tile() end)
-	input.bind("explore", "f", "explore.facing", say_facing)
+	input.bind("explore", "f", "explore.facing", say_facing, { when = function() return #facing_lines() > 0 end })
 	input.bind("explore", "slash", "explore.mark", place_marker)
-	input.bind("explore", "shift+slash", "explore.unmark", clear_marker)
-	input.bind("explore", "ctrl+shift+slash", "explore.unmark_all", clear_all_markers)
+	input.bind("explore", "shift+slash", "explore.unmark", clear_marker, { when = has_marker_here })
+	input.bind("explore", "ctrl+shift+slash", "explore.unmark_all", clear_all_markers, { when = has_markers })
 end
 
 return M

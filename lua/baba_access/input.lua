@@ -130,7 +130,9 @@ function M.layer(name, active, opts)
 end
 
 -- bind(layer, spec, id, handler, opts): handler(event) runs on key down;
--- opts.repeat_ok = true also runs it on auto-repeat.
+-- opts.repeat_ok = true also runs it on auto-repeat; opts.when = function()
+-- says whether the key does anything right now (the help lists it only
+-- then; a key whose `when` is false still dispatches, so handlers no-op).
 function M.bind(layer_name, spec, id, handler, opts)
 	local vk, mods = M.parse(spec)
 	if not vk then log.error("input: %s", mods); return false end
@@ -143,8 +145,10 @@ end
 
 -- What would answer a key right now: the active layers from the top down,
 -- each key once (a lower layer's binding of a key a higher one takes is
--- shadowed), grouped by action id within a layer in binding order:
+-- shadowed), grouped by action id within a layer in binding order, bindings
+-- whose `when` says no left out:
 -- { { layer=, id=, specs = { "ctrl+right", ... }, handler=, opts= }, ... }.
+-- The second result is the set of "vk:mods" keys the layers answer.
 function M.live()
 	local out, taken = {}, {}
 	for i = #layers, 1, -1 do
@@ -159,6 +163,9 @@ function M.live()
 			local rows = {}
 			for _, e in ipairs(binds) do
 				local b = e.b
+				local ok, avail = true, true
+				if b.opts.when then ok, avail = pcall(b.opts.when) end
+				if not ok or not avail then goto continue end
 				local row = rows[b.id]
 				if not row then
 					row = { layer = l.name, id = b.id, specs = {}, handler = b.handler, opts = b.opts, vk = b.vk, mods = b.mods }
@@ -166,11 +173,12 @@ function M.live()
 					out[#out + 1] = row
 				end
 				row.specs[#row.specs + 1] = b.spec
+				::continue::
 			end
 			if l.exclusive then break end
 		end
 	end
-	return out
+	return out, taken
 end
 
 -- Runs a listed action as a press of its key would.

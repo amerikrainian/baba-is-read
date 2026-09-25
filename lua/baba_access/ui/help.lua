@@ -9,11 +9,12 @@
 -- n of m"), Home and End jump, Enter closes and runs the row's action on the
 -- next frame as its key would (the action speaks for itself), Escape and F1
 -- close, and every other key is swallowed and kept from the game, so the
--- screen underneath stands still. Labels live in lang/en.lua as
--- "help.<action id>"; key names as "key.<name>".
+-- screen underneath stands still. The game's own keys follow the mod's rows
+-- (game_keys.lua), read the same way and run by a posted key. Labels live in
+-- lang/en.lua as "help.<action id>"; key names as "key.<name>".
 local M = {}
 
-local speech, i18n, input, config, log
+local speech, i18n, input, config, log, game_keys
 
 local open = false
 local rows = {}
@@ -35,6 +36,7 @@ local function key_name(spec)
 end
 
 local function row_label(row)
+	if row.label then return row.label end
 	local key = "help." .. row.id
 	return i18n.has(key) and i18n.t(key) or row.id
 end
@@ -55,9 +57,11 @@ end
 
 function M.open()
 	rows = {}
-	for _, row in ipairs(input.live()) do
+	local live, taken = input.live()
+	for _, row in ipairs(live) do
 		if row.layer ~= "help" and row.id ~= "help.open" then rows[#rows + 1] = row end
 	end
+	for _, row in ipairs(game_keys.rows(taken)) do rows[#rows + 1] = row end
 	index = 1
 	open = true
 	local lines = { i18n.t("help.title") }
@@ -100,7 +104,7 @@ function M.tick()
 end
 
 function M.attach(m)
-	speech, i18n, input, config, log = m.speech, m.i18n, m.input, m.config, m.log
+	speech, i18n, input, config, log, game_keys = m.speech, m.i18n, m.input, m.config, m.log, m.game_keys
 	open, rows, index, pending = false, {}, 1, nil
 	input.bind("global", "F1", "help.open", M.open)
 	input.layer("help", M.active, { exclusive = true })

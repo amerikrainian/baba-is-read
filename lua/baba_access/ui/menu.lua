@@ -237,13 +237,18 @@ function M.tick(frame)
 end
 
 -- The focused item's tooltip (the game sets one only on editor buttons). Never
--- joined with the focus line; read on its own key.
-function M.details()
+-- joined with the focus line; read on its own key, silent and unlisted where
+-- there is none.
+function M.tooltip()
 	local state = M.current()
-	if not state then speech.speak(i18n.t("nav.no_menu"), true); return end
+	if not state or state.virtual then return "" end
 	local button = find_objects(state.target)
-	local tip = button and speech.clean(button.strings[BUTTONTOOLTIP]) or ""
-	speech.speak(tip ~= "" and tip or i18n.t("nav.no_details"), true)
+	return button and speech.clean(button.strings[BUTTONTOOLTIP]) or ""
+end
+
+function M.details()
+	local tip = M.tooltip()
+	if tip ~= "" then speech.speak(tip, true) end
 end
 
 function M.attach(m)
@@ -253,7 +258,7 @@ function M.attach(m)
 	last = nil
 	install_wrappers()
 	input.bind("global", "F5", "menu.repeat", function() M.announce_focus(true) end)
-	input.bind("global", "F8", "menu.details", function() M.details() end)
+	input.bind("global", "F8", "menu.details", function() M.details() end, { when = function() return M.tooltip() ~= "" end })
 end
 
 -- For the dev server: a dump of the open menu.

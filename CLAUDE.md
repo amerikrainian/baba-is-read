@@ -182,6 +182,11 @@ each action id once with every key, shadowed keys dropped; rows "label, keys, n 
 `help.<id>` and key names `key.<name>` in the lang file; Enter closes and `input.press(row)` runs the
 handler on the next tick; the `help` layer is exclusive (`input.layer(name, active, {exclusive=true})`:
 swallows every unbound key and captures every vk from the game, so the game stands still under it).
+The game's own keys follow (`ui/game_keys.lua`): the settings' `[keyboard]` SDL keycodes mapped to
+vks, per screen (puzzle, map, grid menu, dialog, credits), keys the mod's active layers take left out,
+run by `bridge.post_key` (down now, up next tick; an OPTIONAL export, nil on an older DLL) or in a
+puzzle by the game's `command(name)`. A binding's `opts.when` says whether it does anything now: the
+help lists it only then, and the handler no-ops silently (no "no marker" style feedback; decided).
 F5 repeats the focused item,
 F8 the focused item's tooltip (the game sets `BUTTONTOOLTIP` only on editor toolbar, quick-menu and
 object-palette buttons; play menus have none), F6 reloads, Ctrl+Shift+S mutes. In a grid menu the

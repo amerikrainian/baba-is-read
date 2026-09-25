@@ -26,7 +26,6 @@ return {
 	["nav.no_menu"] = "no menu open",
 	["nav.no_items"] = "no items",
 	["nav.item"] = "unnamed item {0}",
-	["nav.no_details"] = "no details",
 
 	-- Levels. Terse: the shape of the line carries the meaning.
 	["level.pos"] = "{0}, {1}",             -- column, row
@@ -68,7 +67,6 @@ return {
 	["level.ending"] = "the end",
 	["level.all_done"] = "all is done",
 	["level.no_objects"] = "no objects",
-	["level.no_facing"] = "no facing",       -- F: nothing on the tile shows a direction
 
 	-- Reading cursor categories ([ and ])
 	["cat.objects"] = "objects",
@@ -83,7 +81,6 @@ return {
 	["marker.name"] = "marker {0}",
 	["marker.cleared"] = "cleared",
 	["marker.all_cleared"] = "all cleared",
-	["marker.none"] = "no marker",
 
 	-- The world map
 	["map.entry"] = "map. {0} open, {1} locked, {2} completed",
@@ -166,6 +163,29 @@ return {
 	["help.map.list_choose"] = "go to this level",
 	["help.map.list_close"] = "close the list",
 	["help.help.close"] = "close the help",
+	-- The game's own keys, by screen (game_keys.lua)
+	["help.game.level.right"] = "move right",
+	["help.game.level.left"] = "move left",
+	["help.game.level.up"] = "move up",
+	["help.game.level.down"] = "move down",
+	["help.game.level.idle"] = "wait a turn",
+	["help.game.level.undo"] = "undo",
+	["help.game.level.restart"] = "restart the level",
+	["help.game.level.pause"] = "pause menu",
+	["help.game.map.right"] = "map cursor right",
+	["help.game.map.left"] = "map cursor left",
+	["help.game.map.up"] = "map cursor up",
+	["help.game.map.down"] = "map cursor down",
+	["help.game.map.confirm"] = "enter the level",
+	["help.game.map.pause"] = "pause menu",
+	["help.game.menu.up"] = "previous item",
+	["help.game.menu.down"] = "next item",
+	["help.game.menu.left"] = "item to the left",
+	["help.game.menu.right"] = "item to the right",
+	["help.game.menu.confirm"] = "activate",
+	["help.game.menu.back"] = "back",
+	["help.game.dialog.back"] = "back",
+	["help.game.credits.leave"] = "leave the credits",
 	-- Key names for the help ("Ctrl+Shift+S" from the mod's specs)
 	["key.ctrl"] = "Ctrl",
 	["key.shift"] = "Shift",
