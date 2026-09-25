@@ -14,6 +14,8 @@
 --   no you left     -> "no you"
 --
 -- Terse by design: no verbs where the shape of the line already says it.
+-- Every part is its own announcement (the first interrupts, the rest queue),
+-- so a rule change, an event and the position are separate lines.
 -- Keys (level layer, active in a level): T the rules, H where you are, L the
 -- object counts; explore mode lives in explore.lua.
 local M = {}
@@ -66,7 +68,8 @@ local function flush(line, interrupt)
 	pending = {}
 	if line and line ~= "" then parts[#parts + 1] = line end
 	if #parts == 0 then return end
-	speech.speak(table.concat(parts, ". "), interrupt)
+	-- One announcement per part; only the first interrupts.
+	for i, p in ipairs(parts) do speech.speak(p, interrupt and i == 1) end
 end
 
 -- The line for where the player is now: "<name>, col, row[, contents]" with
@@ -155,13 +158,8 @@ local function on_turn_end(extra)
 		local ahead = state.describe_tile(u.values[XPOS] + d[1], u.values[YPOS] + d[2], u)
 		line = ahead ~= "" and i18n.t("level.blocked_by", ahead) or i18n.t("level.blocked")
 	end
-	local signs = events.sign_lines()
-	if #signs > 0 then
-		local parts = { line }
-		for _, s in ipairs(signs) do parts[#parts + 1] = s end
-		line = table.concat(parts, ". ")
-	end
 	flush(line, true)
+	for _, s in ipairs(events.sign_lines()) do speech.speak(s, false) end
 end
 
 -- The undo hook fires before the game re-parses the rules, so the line waits

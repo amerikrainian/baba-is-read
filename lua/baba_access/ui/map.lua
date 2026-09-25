@@ -163,7 +163,7 @@ function M.announce_map()
 		lines[#lines + 1] = M.describe_cursor(cursor)
 		last_tile = cursor.values[XPOS] .. "," .. cursor.values[YPOS]
 	end
-	speech.speak(table.concat(lines, ". "), true)
+	for i, line in ipairs(lines) do speech.speak(line, i == 1) end
 end
 
 -- The map is announced only when the game's level_start hook has fired for
