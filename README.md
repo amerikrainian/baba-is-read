@@ -14,7 +14,7 @@ A screen-reader accessibility mod for Baba Is You (Steam, Windows). Speech goes 
 - Exploration cursor: in a level the arrow keys read the tiles, each step "column, row, contents", while nothing in the level moves. WASD move you, as the game always allowed. Period and comma jump to the next and previous entry of the current reading category, wrapping around; [ and ] switch the category between objects (everything but text, terrain such as walls and water, and you), rules (each parsed rule as one entry plus loose text words) markers and all; a category with nothing in it is skipped. Within a category, Shift+period and Shift+comma narrow to one kind ("skull, 3"), or back to all kinds. Ctrl+arrows skip a run of identical tiles, landing on the first tile that reads differently (the wall past a stretch of floor, the floor past a stretch of wall). Slash places a marker on the cursor's tile ("marker 1", "marker 2", ... for the level), Shift+slash clears the one there, Ctrl+Shift+slash clears them all; a marker is read with its tile. Home returns the cursor to you. T reads the rules, H where you are, L the object counts.
 
 - The credits (main menu and the ending): "Credits" on entry, then every line spoken as it scrolls in. Space leaves (Escape does not).
-- The world map: on entry "map. 3 open, 10 locked, 0 completed" and the tile under the cursor. The arrows walk the game's cursor along the paths, each tile read as "column, row" with the level there and its status, or the directions that continue. L lists every visible level with its status, reachable ones first; Enter on a reachable one moves the cursor there, and Enter again starts it. Period and comma read the map without moving the cursor, [ and ] switching between levels, rules and all; Home returns the reading position to the cursor.
+- The world map: on entry "map. 3 open, 10 locked, 0 completed", what changed since the last visit ("new: volcano", "revealed: off limits", "gate opened, 12, 5"), the progress counters ("5 of 225 levels, 0 of 12 areas, 0 of 3 bonus") and the tile under the cursor. Level names carry the number their icon shows ("2. where do i go?") and a bonus mark; a closed gate is read with what it needs, also from the tile beside it ("gate right, needs 5 areas"); the control hints around the start read as "hint, Wait"; "Map clear!" when the game plays it. The arrows walk the game's cursor along the paths, each tile read as "column, row" with the level there and its status, or the directions that continue. L lists every visible level with its status, reachable ones first; Enter on a reachable one moves the cursor there, and Enter again starts it. Period and comma read the map without moving the cursor, [ and ] switching between levels, rules and all; Home returns the reading position to the cursor.
 
 ## Keys
 
@@ -36,7 +36,7 @@ The game's own keys are unchanged, except that inside a level the arrows belong 
 | C | Your coordinates alone: column, row (the map cursor on the map) |
 | T, H, L | In a level: the rules, where you are, the object counts |
 | F | In a level: the facing of what is on the cursor's tile ("baba, right"), for objects whose sprite shows it |
-| L, H | On the map: the level list (Up, Down, Enter, Escape), where the cursor is |
+| L, H | On the map: the level list (Up, Down, Enter, Escape), where the cursor is and the progress counters |
 | F6 | Reload the mod's Lua modules (development) |
 | Ctrl+Shift+S | Mute or unmute speech |
 

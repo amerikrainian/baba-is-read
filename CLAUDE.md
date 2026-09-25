@@ -265,10 +265,14 @@ are ours because the game draws most menus without a name.
    main map's specials are `controls` hints (not yet spoken). Open: the map (see 6).
 6. **(done, first pass)** Level map (`ui/map.lua`): entry line with open/locked/completed counts,
    every cursor tile spoken (level and status, or the directions that continue), the level list
-   with reachable-first ordering and the engine-placed jump, period/comma reading cursor with categories. Open: the HUD
-   counters (cleared, bonus, prize: special objects, read them from the save data), the
-   `enterlevel_multiple` chooser, sub-maps (each numbered area is a map of its own), the status
-   of a level's bonus.
+   with reachable-first ordering and the engine-placed jump, period/comma reading cursor with categories;
+   level numbers (`getlevelid`, numbered styles only), bonus marks (save `<world>_bonus`, unverified),
+   gates (`paths` with `PATH_GATE` > 0 whose path has appeared: `PATH_TARGET` is the spawned lock
+   object, `COMPLETED` 1 closed), control hints (`[specials]` `controls,<key>` read from the level
+   file, worded with the game's `idle`/`move`/direction strings), progress (save `<world>_prize/
+   _clears/_bonus` totals against `MF_read("world","general","prize_max"...)`), a diff against the
+   last visit on re-entry, "Map clear!" from an `unlockeffect` wrapper. Open: the
+   `enterlevel_multiple` chooser, sub-maps (each numbered area is a map of its own).
 7. **(done, first pass)** Exploration cursor (`ui/explore.lua`): the arrows in every level, parked
    on the player at level start. Open: distance and direction from the player in readouts, jump by
    object kind, a "what is around me" summary.
