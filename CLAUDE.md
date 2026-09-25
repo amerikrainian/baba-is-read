@@ -175,7 +175,8 @@ object-palette buttons; play menus have none), F6 reloads, Ctrl+Shift+S mutes. I
 arrows are ours (`menu_list` layer); in a dialog the arrows, Enter and Space (`dialog` layer). In a
 level (`level` and `explore` layers, `state.in_puzzle()`): the ARROWS are the exploration cursor
 (decided: always, no mode to toggle; the player moves with the game's WASD, which the mod never
-captures), period/comma jump to the next/previous entry in reading order from the cursor, wrapping,
+captures), Ctrl+arrows skip a run of tiles that read the same as the cursor's and land on the first
+that reads differently (or the run's last tile at the edge), period/comma jump to the next/previous entry in reading order from the cursor, wrapping,
 within a category that [ and ] cycle (`level_state.CATEGORIES`: objects = non-text, non-terrain
 (`TILING ~= 1`, so no walls, water, hedges), not the player; rules = parsed rules plus loose text;
 all), Home parks the cursor on the player, C the player's coordinates alone, T the rules, H where you are, L the object counts. On the

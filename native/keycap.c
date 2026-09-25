@@ -184,11 +184,18 @@ static void install_state_hooks(void) {
 }
 
 // ---- Window subclass ----
+// A modifier counts when the real keyboard holds it or the dev server holds it
+// synthetically (so `dev.py key ctrl:down right ctrl:up` is a Ctrl+Right chord).
+static int mod_down(int vk) {
+    if (g_synth[vk]) return 1;
+    return (o_GetKeyState ? o_GetKeyState(vk) : GetKeyState(vk)) & 0x8000 ? 1 : 0;
+}
+
 static int current_mods(void) {
     int m = 0;
-    if (o_GetKeyState ? (o_GetKeyState(VK_SHIFT) & 0x8000) : (GetKeyState(VK_SHIFT) & 0x8000)) m |= 1;
-    if (o_GetKeyState ? (o_GetKeyState(VK_CONTROL) & 0x8000) : (GetKeyState(VK_CONTROL) & 0x8000)) m |= 2;
-    if (o_GetKeyState ? (o_GetKeyState(VK_MENU) & 0x8000) : (GetKeyState(VK_MENU) & 0x8000)) m |= 4;
+    if (mod_down(VK_SHIFT)) m |= 1;
+    if (mod_down(VK_CONTROL)) m |= 2;
+    if (mod_down(VK_MENU)) m |= 4;
     return m;
 }
 
