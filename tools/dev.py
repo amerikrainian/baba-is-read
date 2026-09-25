@@ -42,6 +42,8 @@ VK = {
     "pageup": 33, "pagedown": 34, "end": 35, "home": 36,
     "left": 37, "up": 38, "right": 39, "down": 40, "insert": 45, "delete": 46,
     "shift": 16, "ctrl": 17, "alt": 18,
+    "semicolon": 186, "equals": 187, "comma": 188, "minus": 189, "period": 190, "slash": 191, "grave": 192,
+    "leftbracket": 219, "backslash": 220, "rightbracket": 221, "apostrophe": 222,
 }
 for i in range(10):
     VK[str(i)] = 48 + i

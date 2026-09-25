@@ -175,10 +175,13 @@ object-palette buttons; play menus have none), F6 reloads, Ctrl+Shift+S mutes. I
 arrows are ours (`menu_list` layer); in a dialog the arrows, Enter and Space (`dialog` layer). In a
 level (`level` and `explore` layers, `state.in_puzzle()`): the ARROWS are the exploration cursor
 (decided: always, no mode to toggle; the player moves with the game's WASD, which the mod never
-captures), J/K jump to the next/previous object in reading order from the cursor, Home parks the
-cursor on the player, T the rules, H where you are, L the object counts. On the world map (`map`
-layer, `state.is_map()`): the arrows are the GAME's and walk its cursor, every tile spoken; J/K are
-a reading cursor over the map's objects and Home returns it to the game cursor; L opens the level
+captures), period/comma jump to the next/previous entry in reading order from the cursor, wrapping,
+within a category that [ and ] cycle (`level_state.CATEGORIES`: objects = non-text, non-terrain
+(`TILING ~= 1`, so no walls, water, hedges), not the player; rules = parsed rules plus loose text;
+all), Home parks the cursor on the player, T the rules, H where you are, L the object counts. On the
+world map (`map` layer, `state.is_map()`): the arrows are the GAME's and walk its cursor, every tile
+spoken; period/comma are a reading cursor over the map with categories levels, rules, all, and Home
+returns it to the game cursor; L opens the level
 list (`map_list` layer: Up/Down, Enter, Escape or L), H reads the cursor's tile. **Decided: the
 game's map cursor is moved by the mod only through the list, and only onto a reachable open
 level** (BFS over passable tiles from where it stands, the engine's own passability rule): the map
@@ -233,7 +236,7 @@ are ours because the game draws most menus without a name.
    transformations named, multiple `you` objects, "Level Is Auto" turns, the map (see 6).
 6. **(done, first pass)** Level map (`ui/map.lua`): entry line with open/locked/completed counts,
    every cursor tile spoken (level and status, or the directions that continue), the level list
-   with reachable-first ordering and the engine-placed jump, J/K reading cursor. Open: the HUD
+   with reachable-first ordering and the engine-placed jump, period/comma reading cursor with categories. Open: the HUD
    counters (cleared, bonus, prize: special objects, read them from the save data), the
    `enterlevel_multiple` chooser, sub-maps (each numbered area is a map of its own), the status
    of a level's bonus.

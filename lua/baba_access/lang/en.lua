@@ -47,6 +47,13 @@ return {
 	["level.edge"] = "edge",
 	["level.no_objects"] = "no objects",
 
+	-- Reading cursor categories ([ and ])
+	["cat.objects"] = "objects",
+	["cat.rules"] = "rules",
+	["cat.all"] = "all",
+	["cat.levels"] = "levels",
+	["cat.switched"] = "{0}, {1}",          -- category name, entry count
+
 	-- The world map
 	["map.entry"] = "map. {0} open, {1} locked, {2} completed",
 	["map.open"] = "open",

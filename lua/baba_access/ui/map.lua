@@ -11,9 +11,11 @@
 -- engine moves: a tile is passable when it holds a visible, living path or
 -- level object that is open.
 --
--- J and K are a reading cursor, as in a level: they jump between the objects
--- on the map (level icons, text, anything with a rule) without touching the
--- game's cursor; Home brings the reading cursor back to it. The arrows stay
+-- Period and comma are a reading cursor, as in a level: they jump between
+-- the entries of the current category (levels; rules; all, which adds any
+-- other object on the map), wrapping around, without touching the game's
+-- cursor; [ and ] switch the category and Home brings the reading cursor
+-- back to the game's cursor. The arrows stay
 -- the game's and walk the real map, each tile read as "col, row" with the
 -- level on it or the directions that continue from it.
 local M = {}
@@ -23,8 +25,11 @@ local speech, i18n, hooks, input, config, log, state
 local announce_start = false -- set by the level_start hook
 local last_tile = nil       -- "x,y" of the cursor last spoken
 local list = nil            -- { items = {...}, index = n } while the list is open
-local rx, ry = 0, 0         -- the reading cursor (J, K, Home)
-local read_index = 0        -- position within objects() while J/K cycle
+local rx, ry = 0, 0         -- the reading cursor (period, comma, Home)
+local read_index = 0        -- position within objects() while period/comma cycle
+local category = 1          -- index into CATEGORIES
+
+local CATEGORIES = { "levels", "rules", "all" }
 
 local DIRS = { { 1, 0, "dir.right" }, { 0, -1, "dir.up" }, { -1, 0, "dir.left" }, { 0, 1, "dir.down" } }
 
@@ -198,19 +203,26 @@ end
 
 -- ---- the reading cursor ----
 
--- Everything worth stopping on, in reading order: visible level icons with
--- their status, each parsed rule as one entry, other text and any object with
--- a rule (scenery when configured). Entries are { x =, y =, label = }.
-function M.objects()
-	local exclude = {}
-	local cursor = M.cursor_unit()
-	if cursor then exclude[cursor.fixed] = true end
-	for _, u in ipairs(units or {}) do
-		if (u.strings[U_LEVELFILE] or "") ~= "" then exclude[u.fixed] = true end
+-- Everything worth stopping on in a category, in reading order: "levels" the
+-- visible level icons with their status; "rules" each parsed rule as one
+-- entry and every loose text word; "all" both plus any other visible object
+-- (scenery when configured). Entries are { x =, y =, label = }.
+function M.objects(cat)
+	cat = cat or "all"
+	local out = {}
+	if cat ~= "levels" then
+		local exclude = {}
+		local cursor = M.cursor_unit()
+		if cursor then exclude[cursor.fixed] = true end
+		for _, u in ipairs(units or {}) do
+			if (u.strings[U_LEVELFILE] or "") ~= "" then exclude[u.fixed] = true end
+		end
+		out = state.reading_entries(exclude, cat)
 	end
-	local out = state.reading_entries(exclude)
-	for _, l in ipairs(M.levels()) do
-		out[#out + 1] = { x = l.x, y = l.y, label = speech.join({ l.name, M.status_word(l.done) }) }
+	if cat ~= "rules" then
+		for _, l in ipairs(M.levels()) do
+			out[#out + 1] = { x = l.x, y = l.y, label = speech.join({ l.name, M.status_word(l.done) }) }
+		end
 	end
 	table.sort(out, function(a, b)
 		if a.y ~= b.y then return a.y < b.y end
@@ -221,7 +233,7 @@ function M.objects()
 end
 
 local function read_jump(delta)
-	local entries = M.objects()
+	local entries = M.objects(CATEGORIES[category])
 	if #entries == 0 then speech.speak(i18n.t("level.no_objects"), true); return end
 	if read_index == 0 then
 		local after = #entries + 1
@@ -234,6 +246,13 @@ local function read_jump(delta)
 	local e = entries[read_index]
 	rx, ry = e.x, e.y
 	speech.speak(speech.join({ state.pos_text(rx, ry), e.label }), true)
+end
+
+local function switch_category(delta)
+	category = ((category - 1 + delta) % #CATEGORIES) + 1
+	read_index = 0
+	local name = i18n.t("cat." .. CATEGORIES[category])
+	speech.speak(i18n.t("cat.switched", name, #M.objects(CATEGORIES[category])), true)
 end
 
 local function read_home()
@@ -316,8 +335,10 @@ function M.attach(m)
 	local on_map = function() return state.in_level() and state.is_map() end
 	input.layer("map", on_map)
 	local rep = { repeat_ok = true }
-	input.bind("map", "j", "map.next", function() read_jump(1) end, rep)
-	input.bind("map", "k", "map.prev", function() read_jump(-1) end, rep)
+	input.bind("map", "period", "map.next", function() read_jump(1) end, rep)
+	input.bind("map", "comma", "map.prev", function() read_jump(-1) end, rep)
+	input.bind("map", "rightbracket", "map.next_category", function() switch_category(1) end)
+	input.bind("map", "leftbracket", "map.prev_category", function() switch_category(-1) end)
 	input.bind("map", "home", "map.home", read_home)
 	input.bind("map", "l", "map.list", M.list_open)
 	input.bind("map", "h", "map.where", M.say_where)

@@ -3,16 +3,19 @@
 -- In a level the arrow keys are ours and step a cursor over the tiles, each
 -- step speaking "col, row[, contents]"; the game's own WASD move the player and
 -- are never captured. On the world map the arrows stay the game's (see
--- map.lua). J and K jump to the next and previous entry in reading order
--- from the cursor (a parsed rule is one entry, landing on its first word),
--- Home returns the cursor to the player. The cursor parks on the player when
--- a level starts and follows the player after every move.
+-- map.lua). Period and comma jump to the next and previous entry of the
+-- current category in reading order from the cursor, wrapping around (a
+-- parsed rule is one entry, landing on its first word); [ and ] switch the
+-- category (objects, rules, all; see level_state.CATEGORIES). Home returns
+-- the cursor to the player. The cursor parks on the player when a level
+-- starts and follows the player after every move.
 local M = {}
 
 local speech, i18n, input, state, log
 
 local cx, cy = 0, 0
 local jump_index = 0
+local category = 1       -- index into state.CATEGORIES
 local parked_for = nil   -- level identity the cursor was last parked for
 local last_you = nil     -- "x,y" of the player last seen, to follow moves
 
@@ -42,10 +45,14 @@ local function step(dx, dy)
 	say_tile()
 end
 
-local function jump(delta)
+local function entries_now()
 	local exclude = {}
 	for _, u in ipairs(state.you_units()) do exclude[u.fixed] = true end
-	local entries = state.reading_entries(exclude)
+	return state.reading_entries(exclude, state.CATEGORIES[category])
+end
+
+local function jump(delta)
+	local entries = entries_now()
 	if #entries == 0 then speech.speak(i18n.t("level.no_objects"), true); return end
 	if jump_index == 0 then
 		-- Start from the cursor: the first entry after it in reading order,
@@ -60,6 +67,14 @@ local function jump(delta)
 	local e = entries[jump_index]
 	cx, cy = e.x, e.y
 	speech.speak(speech.join({ state.pos_text(cx, cy), e.label }), true)
+end
+
+local function switch_category(delta)
+	local n = #state.CATEGORIES
+	category = ((category - 1 + delta) % n) + 1
+	jump_index = 0
+	local name = i18n.t("cat." .. state.CATEGORIES[category])
+	speech.speak(i18n.t("cat.switched", name, #entries_now()), true)
 end
 
 -- Cursor position, for other modules.
@@ -94,8 +109,10 @@ function M.attach(m)
 	input.bind("explore", "left", "explore.left", function() step(-1, 0) end, rep)
 	input.bind("explore", "up", "explore.up", function() step(0, -1) end, rep)
 	input.bind("explore", "down", "explore.down", function() step(0, 1) end, rep)
-	input.bind("explore", "j", "explore.next", function() jump(1) end, rep)
-	input.bind("explore", "k", "explore.prev", function() jump(-1) end, rep)
+	input.bind("explore", "period", "explore.next", function() jump(1) end, rep)
+	input.bind("explore", "comma", "explore.prev", function() jump(-1) end, rep)
+	input.bind("explore", "rightbracket", "explore.next_category", function() switch_category(1) end)
+	input.bind("explore", "leftbracket", "explore.prev_category", function() switch_category(-1) end)
 	input.bind("explore", "home", "explore.home", function() park_on_player(); say_tile() end)
 end
 
