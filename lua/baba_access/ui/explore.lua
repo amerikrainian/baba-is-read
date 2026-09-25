@@ -11,7 +11,11 @@
 -- Shift+comma cycle the kind: "all", then every distinct name present
 -- (skull, rock, flag, ...), and period/comma then jump among that kind only;
 -- a category switch resets the kind. The rules category has no kinds: the
--- keys do nothing there. Ctrl+arrows skip a run of identical
+-- keys do nothing there. A category or kind switch lands on the entry
+-- nearest (Manhattan distance, ties in reading order, the cursor's own tile
+-- allowed) to an anchor: where the cursor stood before the first switch of a
+-- run, so switching back and forth is stable; any other cursor movement
+-- moves the anchor with it. Ctrl+arrows skip a run of identical
 -- tiles: the cursor lands on the first tile in that direction whose contents
 -- differ from the tile it stands on, or on the last tile of the run when the
 -- run reaches the edge. Home returns the cursor to the player.
@@ -27,6 +31,7 @@ local speech, i18n, input, state, log
 
 local cx, cy = 0, 0
 local jump_index = 0
+local anchor = nil       -- { x=, y= } the cursor before a run of switches, or nil = the cursor
 local category = 1       -- index into CATEGORIES
 local kind = nil         -- an entry label to restrict period/comma to, or nil for all
 local parked_for = nil   -- level identity the cursor was last parked for
@@ -82,7 +87,7 @@ end
 local function park_on_player()
 	local u = state.you_units()[1]
 	if u then cx, cy = u.values[XPOS], u.values[YPOS]; last_you = cx .. "," .. cy end
-	jump_index = 0
+	jump_index, anchor = 0, nil
 end
 
 local function step(dx, dy)
@@ -92,7 +97,7 @@ local function step(dx, dy)
 		return
 	end
 	cx, cy = nx, ny
-	jump_index = 0
+	jump_index, anchor = 0, nil
 	say_tile()
 end
 
@@ -116,7 +121,7 @@ local function skip(dx, dy)
 		return
 	end
 	cx, cy = x, y
-	jump_index = 0
+	jump_index, anchor = 0, nil
 	say_tile()
 end
 
@@ -181,6 +186,24 @@ local function jump_line(delta)
 	jump_index = ((jump_index - 1 + delta) % #entries) + 1
 	local e = entries[jump_index]
 	cx, cy = e.x, e.y
+	anchor = nil
+	return speech.join({ state.pos_text(cx, cy), e.label })
+end
+
+-- After a category or kind switch: the cursor lands on the entry nearest the
+-- anchor, and period/comma continue from it. Returns the entry's line.
+local function land_line()
+	local entries = entries_now()
+	if #entries == 0 then return i18n.t("level.no_objects") end
+	if not anchor then anchor = { x = cx, y = cy } end
+	local best, bi = nil, 1
+	for i, e in ipairs(entries) do
+		local d = math.abs(e.x - anchor.x) + math.abs(e.y - anchor.y)
+		if best == nil or d < best then best, bi = d, i end
+	end
+	jump_index = bi
+	local e = entries[bi]
+	cx, cy = e.x, e.y
 	return speech.join({ state.pos_text(cx, cy), e.label })
 end
 
@@ -190,7 +213,7 @@ end
 
 -- [ and ]: the next category in the cycle that has entries; a category with
 -- nothing in it is passed over. With nothing anywhere, "no objects". The
--- switch then lands on the next entry, as a period press would.
+-- switch then lands on the entry nearest the anchor.
 local function switch_category(delta)
 	local n = #CATEGORIES
 	local i = category
@@ -201,7 +224,7 @@ local function switch_category(delta)
 			category = i
 			kind = nil
 			jump_index = 0
-			speech.speak_lines({ i18n.t("cat.switched", i18n.t("cat." .. CATEGORIES[i]), count), jump_line(1) })
+			speech.speak_lines({ i18n.t("cat.switched", i18n.t("cat." .. CATEGORIES[i]), count), land_line() })
 			return
 		end
 	end
@@ -209,8 +232,8 @@ local function switch_category(delta)
 end
 
 -- Shift+period / Shift+comma: the next or previous kind within the category,
--- "all kinds" first in the cycle. Announces the kind and its count, then
--- lands on the next entry of it, as a period press would.
+-- "all" first in the cycle. Announces the kind and its count, then lands on
+-- the entry of it nearest the anchor.
 local function switch_kind(delta)
 	if CATEGORIES[category] == "rules" then return end
 	local names, counts = kinds_now()
@@ -232,7 +255,7 @@ local function switch_kind(delta)
 		kind = names[i - 1]
 		header = i18n.t("cat.switched", kind, counts[kind])
 	end
-	speech.speak_lines({ header, jump_line(1) })
+	speech.speak_lines({ header, land_line() })
 end
 
 -- Slash: a marker on the cursor's tile, numbered after the level's last.
@@ -286,7 +309,7 @@ function M.tick()
 		if now ~= last_you then
 			last_you = now
 			cx, cy = u.values[XPOS], u.values[YPOS]
-			jump_index = 0
+			jump_index, anchor = 0, nil
 		end
 	end
 end

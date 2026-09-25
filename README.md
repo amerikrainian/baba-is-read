@@ -27,8 +27,8 @@ The game's own keys are unchanged, except that inside a level the arrows belong 
 | Arrows | In a level: step the exploration cursor (WASD move you). On the map: the game's cursor |
 | Ctrl+Arrows | In a level: skip identical tiles, landing on the first that reads differently |
 | Period, Comma | Next and previous entry of the reading category, wrapping around |
-| [, ] | Previous and next reading category: objects, rules, markers, all (levels, rules, all on the map); empty ones skipped; lands on the next entry |
-| Shift+Period, Shift+Comma | In a level: next and previous kind within the category (all, then each name present, with its count); lands on the next entry of it. Not in the rules category |
+| [, ] | Previous and next reading category: objects, rules, markers, all (levels, rules, all on the map); empty ones skipped; lands on the nearest entry |
+| Shift+Period, Shift+Comma | In a level: next and previous kind within the category (all, then each name present, with its count); lands on the nearest of it. Not in the rules category |
 | / | Place a marker on the cursor's tile |
 | Shift+/ | Clear the marker on the cursor's tile |
 | Ctrl+Shift+/ | Clear every marker in the level |

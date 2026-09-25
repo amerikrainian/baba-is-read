@@ -27,6 +27,7 @@ local last_tile = nil       -- "x,y" of the cursor last spoken
 local list = nil            -- { items = {...}, index = n } while the list is open
 local rx, ry = 0, 0         -- the reading cursor (period, comma, Home)
 local read_index = 0        -- position within objects() while period/comma cycle
+local anchor = nil          -- { x=, y= } the reading cursor before a run of [ ] switches, or nil
 local category = 1          -- index into CATEGORIES
 
 local CATEGORIES = { "levels", "rules", "all" }
@@ -174,7 +175,7 @@ function M.tick()
 		if state.is_map() then
 			M.announce_map()
 			local c = M.cursor_unit()
-			if c then rx, ry = c.values[XPOS], c.values[YPOS]; read_index = 0 end
+			if c then rx, ry = c.values[XPOS], c.values[YPOS]; read_index, anchor = 0, nil end
 		end
 		return
 	end
@@ -185,7 +186,7 @@ function M.tick()
 	if tile ~= last_tile then
 		last_tile = tile
 		rx, ry = cursor.values[XPOS], cursor.values[YPOS]
-		read_index = 0
+		read_index, anchor = 0, nil
 		speech.speak(M.describe_cursor(cursor), true)
 	end
 end
@@ -246,6 +247,25 @@ local function read_jump_line(delta)
 	read_index = ((read_index - 1 + delta) % #entries) + 1
 	local e = entries[read_index]
 	rx, ry = e.x, e.y
+	anchor = nil
+	return speech.join({ state.pos_text(rx, ry), e.label })
+end
+
+-- After a category switch: the reading cursor lands on the entry nearest the
+-- anchor (Manhattan distance, ties in reading order), where it stood before
+-- the first switch of a run, so switching back and forth is stable.
+local function land_line()
+	local entries = M.objects(CATEGORIES[category])
+	if #entries == 0 then return i18n.t("level.no_objects") end
+	if not anchor then anchor = { x = rx, y = ry } end
+	local best, bi = nil, 1
+	for i, e in ipairs(entries) do
+		local d = math.abs(e.x - anchor.x) + math.abs(e.y - anchor.y)
+		if best == nil or d < best then best, bi = d, i end
+	end
+	read_index = bi
+	local e = entries[bi]
+	rx, ry = e.x, e.y
 	return speech.join({ state.pos_text(rx, ry), e.label })
 end
 
@@ -254,7 +274,7 @@ local function read_jump(delta)
 end
 
 -- [ and ]: the next category with entries; an empty one is passed over. The
--- switch then lands on the next entry, as a period press would.
+-- switch then lands on the entry nearest the anchor.
 local function switch_category(delta)
 	local n = #CATEGORIES
 	local i = category
@@ -264,7 +284,7 @@ local function switch_category(delta)
 		if count > 0 then
 			category = i
 			read_index = 0
-			speech.speak_lines({ i18n.t("cat.switched", i18n.t("cat." .. CATEGORIES[i]), count), read_jump_line(1) })
+			speech.speak_lines({ i18n.t("cat.switched", i18n.t("cat." .. CATEGORIES[i]), count), land_line() })
 			return
 		end
 	end
@@ -282,7 +302,7 @@ local function read_home()
 	local cursor = M.cursor_unit()
 	if not cursor then return end
 	rx, ry = cursor.values[XPOS], cursor.values[YPOS]
-	read_index = 0
+	read_index, anchor = 0, nil
 	speech.speak(M.describe_cursor(cursor), true)
 end
 
@@ -333,7 +353,7 @@ local function list_choose()
 	if it.done < 2 then speech.speak(i18n.t("map.locked"), true); return end
 	if not it.reachable then speech.speak(i18n.t("map.unreachable"), true); return end
 	if jump_to(it) then
-		rx, ry, read_index = it.x, it.y, 0
+		rx, ry, read_index, anchor = it.x, it.y, 0, nil
 		speech.speak(speech.join({ state.pos_text(it.x, it.y), it.name, M.status_word(it.done) }), true)
 	end
 end
