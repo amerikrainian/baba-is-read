@@ -78,7 +78,9 @@ function M.start(reloading)
 		error("bridge unavailable: " .. tostring(err))
 	end
 	log.attach(bridge)
-	log.info("start%s: Lua %s, game %s", reloading and " (reload)" or "", _VERSION,
+	local ok_v, version = pcall(require, "baba_access.version")
+	log.info("start%s: Baba Access %s, Lua %s, game %s", reloading and " (reload)" or "",
+		ok_v and tostring(version) or "?", _VERSION,
 		type(MF_getversion) == "function" and tostring(MF_getversion()) or "?")
 
 	mods = load_modules(reloading)

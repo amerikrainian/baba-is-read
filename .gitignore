@@ -7,3 +7,8 @@ lua/baba_access/cmd/
 # Python
 __pycache__/
 .venv/
+
+# Release artifacts (build_release.ps1, build-installer.ps1), the staging dir, the installer's cargo output
+releases/
+obj/
+installer/target/

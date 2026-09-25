@@ -109,6 +109,32 @@ and `babaaccess.dll` + `prism.dll` to `Data\Lua\baba_access\bin\`. **A running g
 `bridge`, `hooks` and `log` persist). `Data\Lua` is empty in the vanilla install, so a Steam update
 does not touch us; `Data\Lua\baba_access\cmd\` is the eval channel's scratch (gitignored).
 
+## Release (`releases\`, `obj\` and `installer\target\` are gitignored)
+- The version is ONE string, `lua\baba_access\version.lua` (`return "X.Y.Z"`, logged at start): the
+  tag `vX.Y.Z`, the zip `BabaAccess-vX.Y.Z.zip` and the installer's installed-version check all read
+  it. Bump it with a `## VX.Y.Z` section in `CHANGELOG.md` (the release notes; the heading is exact).
+- `build_release.ps1`: `build.ps1 -NoDeploy` for a fresh DLL, then the deploy layout staged under
+  `obj\release-stage` (`Data\Lua\baba_access.lua`, `Data\Lua\baba_access\**` minus `cmd\`, both
+  DLLs under `bin\`) and zipped; the zip root IS the game folder.
+- `build-installer.ps1`: `releases\BabaAccessInstaller.exe` from `installer\` (Rust + wxWidgets, the
+  guildrun installer adapted from Non-Visual Calculus: needs cargo, libclang, ninja, all probed;
+  `test-installer.ps1` runs its unit tests). It finds the Steam install (registry, library folders,
+  `BABA_DIR`), downloads the newest release's zip, verifies the sha256 GitHub publishes, installs with
+  backups of anything it overwrites and an install manifest
+  (`Data\Lua\baba_access\install.json`, backups under `...\backups\`), updates (pruning files the
+  new zip no longer ships), repairs an unmanaged (hand-unzipped or dev-deployed) install, uninstalls
+  by restoring the backups. **Uninstall never removes `Data\Lua` itself** (vanilla has it, empty;
+  `paths::mod_root` stops the parent sweep) and never touches a file it did not install (the dev
+  scratch survives). Game facts are the constants in `installer\src\core\paths.rs`; the marker is
+  `Data\modsupport.lua` beside `Baba Is You.exe`.
+- `create-release.ps1 vX.Y.Z`: the GitHub release (gh) for the pushed tag, zip + installer uploaded,
+  the CHANGELOG section as notes. Tags are strict three-part: the installer matches the asset name.
+- End to end without UAC: `cargo run --release --example cli` in `installer\` with `BABA_DIR` at a
+  game folder (a fake one is the exe plus `Data\modsupport.lua` and an empty `Data\Lua`) and
+  `BABA_ACCESS_INSTALLER_RELEASES_URL` at a locally served releases JSON whose asset URL points at the
+  zip (`python -m http.server`); stdin answers the prompts (`y`, then `1` install, `3` uninstall, `4`).
+  The GUI exe requires elevation and is run by hand.
+
 ## Logs
 `%LOCALAPPDATA%\BabaAccess\baba_access.log`, truncated each launch: the bridge's own lines, every
 Lua `log.info/warn/error`, and every spoken line (`speech!:` interrupt, `speech:` queued). An uncaught
@@ -290,5 +316,9 @@ are ours because the game draws most menus without a name.
 8. **(done)** Credits (`ui/credits.lua`): the engine screen (`editor.strings[MENU] == "credits"`, no
    `menufuncs` entry, `INMENU` 0) feeds each line through the Lua `creditstext(text, id)`; a wrapper
    speaks it on arrival, `#key` tokens expanded with the game's `langtext` as `writetext` does.
-9. Polish and release: settings in the game's settings menu, README key list, release zip; restore
-   `fullscreen=1` in the user's settings after a dev session (it is set to 0 for the clicks).
+9. **(done, first pass)** Release: `version.lua`, `CHANGELOG.md`, the release zip, the installer
+   (GUI + CLI, unit-tested, driven end to end against a fake game folder and a local feed), the
+   GitHub release script, README install section. Open: settings in the game's settings menu;
+   `dev_enabled` defaults to true, so a release ships the loopback dev server on; restore
+   `fullscreen=1` in the user's settings after a dev session (it is set to 0 for the clicks); the
+   repository has no remote yet (the installer expects `amerikrainian/baba-access`).

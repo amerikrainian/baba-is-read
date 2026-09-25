@@ -41,6 +41,19 @@ Press F1 anywhere for the list of keys that work right there; Enter on a row doe
 | F6 | Reload the mod's Lua modules (development) |
 | Ctrl+Shift+S | Mute or unmute speech |
 
+## Install
+
+Download `BabaAccessInstaller.exe` from the
+[latest release](https://github.com/amerikrainian/baba-access/releases) and run it. It finds your
+Steam install, downloads the mod, and can later update, repair, or uninstall it. Manual alternative:
+extract the release zip (`BabaAccess-vX.Y.Z.zip`) over the game folder (the one holding
+`Baba Is You.exe`); it puts `baba_access.lua` and a `baba_access` folder into `Data\Lua`.
+
+Launch the game through Steam afterwards. The title screen says "Baba Access loaded" when the mod
+is running; press F1 anywhere for the keys. To update, run the installer again and choose Update,
+or extract the newer zip over the game folder. To remove the mod, the installer's Uninstall puts
+the game folder back as it was; by hand, delete `Data\Lua\baba_access.lua` and `Data\Lua\baba_access`.
+
 ## Install (development)
 
 Requirements: the game on Steam, gcc (scoop or MSYS2), and `uv` for the Python driver.
@@ -58,6 +71,24 @@ This compiles the native bridge and copies the mod into `<game>\Data\Lua`. The g
 - `lua/baba_access/` – the mod: `main` wiring, `bridge`, `hooks`, `speech`, `i18n` and `lang/`, `input`, `config`, `dev`, and `ui/` for the menu announcer, list navigation and per-menu overrides.
 - `tools/dev.py` – drives the running game from a terminal (see below).
 - `third_party/prism/` – vendored Prism release.
+
+## Releases
+
+```
+.\build_release.ps1              # releases\BabaAccess-v<version>.zip, the version from lua\baba_access\version.lua
+.\build-installer.ps1            # releases\BabaAccessInstaller.exe (installer\, Rust + wxWidgets: cargo, libclang, ninja)
+.\test-installer.ps1             # the installer's unit tests
+.\create-release.ps1 vX.Y.Z      # the GitHub release for the pushed tag, the CHANGELOG.md section as notes
+```
+
+Bump `version.lua` and add the `## VX.Y.Z` section to `CHANGELOG.md` first; the tag, the zip name and
+the installer's version check all follow that one string. The installer is adapted from the
+[Non-Visual Calculus](https://github.com/rashadnaqeeb/NonVisualCalculus) installer by Rashad Naqeeb
+(MIT). `installer\src\core\paths.rs` holds the game facts it relies on (the exe and folder names,
+`Data\modsupport.lua` as the install marker, the mod's paths, the releases URL). A dev box drives it
+without the elevation prompt through `cargo run --release --example cli` in `installer\`, with
+`BABA_DIR` pointing at a game folder and `BABA_ACCESS_INSTALLER_RELEASES_URL` at a local copy of
+the releases feed.
 
 ## Development loop
 
