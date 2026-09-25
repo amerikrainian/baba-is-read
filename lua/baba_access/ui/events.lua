@@ -109,14 +109,23 @@ function M.lines()
 			local x, y = u.values[XPOS], u.values[YPOS]
 			if x ~= s.x or y ~= s.y then
 				local kind
-				if pushed[u.fixed] then kind = "pushed"
+				if math.abs(x - s.x) + math.abs(y - s.y) > 1 then kind = "teleported"
+				elseif pushed[u.fixed] then kind = "pushed"
 				elseif pulled[u.fixed] then kind = "pulled"
 				elseif reasons[u.fixed] == "shift" then kind = "shifted"
 				elseif reasons[u.fixed] == "fear" then kind = "fled"
-				elseif not reasons[u.fixed] and math.abs(x - s.x) + math.abs(y - s.y) > 1 then kind = "teleported"
 				else kind = "moved" end
 				bump(groups[kind], state.name_of(u))
 			end
+		end
+	end
+	-- A pushed or pulled unit destroyed in the same turn (a rock pushed into
+	-- water) is gone from `units`: count it from the snapshot.
+	local present = {}
+	for _, u in ipairs(units or {}) do present[u.fixed] = true end
+	for _, pair in ipairs({ { pushed, "pushed" }, { pulled, "pulled" } }) do
+		for id in pairs(pair[1]) do
+			if not present[id] and snap[id] then bump(groups[pair[2]], snap[id].name) end
 		end
 	end
 	for _, k in ipairs(MOVE_KINDS) do
