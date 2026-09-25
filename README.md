@@ -27,6 +27,7 @@ The game's own keys are unchanged, except that inside a level the arrows belong 
 | Period, Comma | Next and previous entry of the reading category, wrapping around |
 | [, ] | Previous and next reading category: objects, rules, all (levels, rules, all on the map) |
 | Home | Reading position back to you or the map cursor |
+| C | Re-read the reading position: its column, row and contents |
 | T, H, L | In a level: the rules, where you are, the object counts |
 | L, H | On the map: the level list (Up, Down, Enter, Escape), where the cursor is |
 | F6 | Reload the mod's Lua modules (development) |

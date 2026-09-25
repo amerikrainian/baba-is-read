@@ -7,7 +7,7 @@
 -- current category in reading order from the cursor, wrapping around (a
 -- parsed rule is one entry, landing on its first word); [ and ] switch the
 -- category (objects, rules, all; see level_state.CATEGORIES). Home returns
--- the cursor to the player. The cursor parks on the player when a level
+-- the cursor to the player and C re-reads the cursor's tile. The cursor parks on the player when a level
 -- starts and follows the player after every move.
 local M = {}
 
@@ -114,6 +114,7 @@ function M.attach(m)
 	input.bind("explore", "rightbracket", "explore.next_category", function() switch_category(1) end)
 	input.bind("explore", "leftbracket", "explore.prev_category", function() switch_category(-1) end)
 	input.bind("explore", "home", "explore.home", function() park_on_player(); say_tile() end)
+	input.bind("explore", "c", "explore.where", function() say_tile() end)
 end
 
 return M

@@ -14,8 +14,8 @@
 -- Period and comma are a reading cursor, as in a level: they jump between
 -- the entries of the current category (levels; rules; all, which adds any
 -- other object on the map), wrapping around, without touching the game's
--- cursor; [ and ] switch the category and Home brings the reading cursor
--- back to the game's cursor. The arrows stay
+-- cursor; [ and ] switch the category, Home brings the reading cursor
+-- back to the game's cursor and C re-reads its tile. The arrows stay
 -- the game's and walk the real map, each tile read as "col, row" with the
 -- level on it or the directions that continue from it.
 local M = {}
@@ -255,6 +255,21 @@ local function switch_category(delta)
 	speech.speak(i18n.t("cat.switched", name, #M.objects(CATEGORIES[category])), true)
 end
 
+-- The reading cursor's tile: "col, row, name, status" on a level, else the
+-- objects there.
+local function read_where()
+	local parts = { state.pos_text(rx, ry) }
+	local l = M.level_at(rx, ry)
+	if l then
+		parts[#parts + 1] = l.name
+		parts[#parts + 1] = M.status_word(l.done)
+	else
+		local here = state.describe_tile(rx, ry, M.cursor_unit())
+		if here ~= "" then parts[#parts + 1] = here end
+	end
+	speech.speak(table.concat(parts, ", "), true)
+end
+
 local function read_home()
 	local cursor = M.cursor_unit()
 	if not cursor then return end
@@ -340,6 +355,7 @@ function M.attach(m)
 	input.bind("map", "rightbracket", "map.next_category", function() switch_category(1) end)
 	input.bind("map", "leftbracket", "map.prev_category", function() switch_category(-1) end)
 	input.bind("map", "home", "map.home", read_home)
+	input.bind("map", "c", "map.read_where", read_where)
 	input.bind("map", "l", "map.list", M.list_open)
 	input.bind("map", "h", "map.where", M.say_where)
 	input.layer("map_list", M.list_active)
