@@ -19,7 +19,8 @@
 --   sign text      special sign objects (a wrapper on handlespecial) whose
 --                  text the game shows while you stand next to them
 --
--- Lines are terse and grouped by kind with counts: "pushed rock",
+-- Lines are terse and grouped by kind with counts: "pushed rock" (pushed or
+-- pulled text by its word alone, "pushed flag", not "pushed flag text"),
 -- "sank rock, water", "rock 3 became baba", "made keke 2".
 local M = {}
 
@@ -48,11 +49,17 @@ local function level_key()
 	return tostring(generaldata.strings[WORLD]) .. "/" .. tostring(generaldata.strings[CURRLEVEL])
 end
 
+-- A unit's name with the text marker dropped: the word "flag" for the text
+-- FLAG as for the object.
+local function word_of(u)
+	return (tostring(u.strings[UNITNAME] or ""):gsub("^text_", ""))
+end
+
 local function snapshot()
 	local out = {}
 	for _, u in ipairs(units or {}) do
 		if state.is_visible(u) then
-			out[u.fixed] = { name = state.name_of(u), x = u.values[XPOS], y = u.values[YPOS] }
+			out[u.fixed] = { name = state.name_of(u), word = word_of(u), x = u.values[XPOS], y = u.values[YPOS] }
 		end
 	end
 	return out
@@ -115,7 +122,8 @@ function M.lines()
 				elseif reasons[u.fixed] == "shift" then kind = "shifted"
 				elseif reasons[u.fixed] == "fear" then kind = "fled"
 				else kind = "moved" end
-				bump(groups[kind], state.name_of(u))
+				-- Pushed and pulled text goes by its word alone: "pushed flag".
+				bump(groups[kind], (kind == "pushed" or kind == "pulled") and word_of(u) or state.name_of(u))
 			end
 		end
 	end
@@ -125,7 +133,7 @@ function M.lines()
 	for _, u in ipairs(units or {}) do present[u.fixed] = true end
 	for _, pair in ipairs({ { pushed, "pushed" }, { pulled, "pulled" } }) do
 		for id in pairs(pair[1]) do
-			if not present[id] and snap[id] then bump(groups[pair[2]], snap[id].name) end
+			if not present[id] and snap[id] then bump(groups[pair[2]], snap[id].word) end
 		end
 	end
 	for _, k in ipairs(MOVE_KINDS) do
