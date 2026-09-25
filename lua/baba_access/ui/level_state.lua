@@ -172,6 +172,23 @@ function M.rules_with_units()
 	return out
 end
 
+-- Whether the object's sprite shows which way it faces: the game's tiling
+-- modes 0 (directional sprites, skull), 2 (characters, baba, keke) and 3
+-- (animated directional, belt). Rocks, flags, words (-1), terrain (1) and
+-- plain animations (4) look the same whichever way they face, so their
+-- stored direction is hidden from sighted players too.
+function M.shows_facing(unit)
+	local t = unit.values[TILING]
+	return t == 0 or t == 2 or t == 3
+end
+
+-- The direction an object faces, as a word: 0 right, 1 up, 2 left, 3 down.
+local DIR_KEYS = { [0] = "dir.right", [1] = "dir.up", [2] = "dir.left", [3] = "dir.down" }
+function M.facing_word(unit)
+	local key = DIR_KEYS[unit.values[DIR]]
+	return key and i18n.t(key) or tostring(unit.values[DIR])
+end
+
 -- Terrain: the autotiled objects (wall, water, hedge, lava, brick, fence,
 -- grass, ...), which the game marks with TILING 1 on every unit. The
 -- "objects" reading category leaves them out; the census never does.

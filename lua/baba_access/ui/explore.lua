@@ -20,6 +20,10 @@
 -- differ from the tile it stands on, or on the last tile of the run when the
 -- run reaches the edge. Home returns the cursor to the player.
 --
+-- F reads the facing of what stands on the cursor's tile, "baba, right",
+-- for objects whose sprite shows it (level_state.shows_facing), the way a
+-- sighted player sees it; objects drawn without a direction are left out.
+--
 -- Markers: slash places "marker n" on the cursor's tile (numbered upwards per
 -- level, kept for the level until the session ends), Shift+slash clears the
 -- marker on the cursor's tile, Ctrl+Shift+slash clears every marker of the
@@ -291,6 +295,18 @@ local function clear_all_markers()
 	speech.speak(i18n.t("marker.all_cleared"), true)
 end
 
+-- F: the facing of each object on the cursor's tile that shows one.
+local function say_facing()
+	local lines = {}
+	for _, u in ipairs(state.units_at(cx, cy)) do
+		if state.shows_facing(u) then
+			lines[#lines + 1] = speech.join({ state.name_of(u), state.facing_word(u) })
+		end
+	end
+	if #lines == 0 then lines[1] = i18n.t("level.no_facing") end
+	speech.speak_lines(lines)
+end
+
 -- Cursor position, for other modules.
 function M.cursor() return cx, cy end
 
@@ -334,6 +350,7 @@ function M.attach(m)
 	input.bind("explore", "rightbracket", "explore.next_category", function() switch_category(1) end)
 	input.bind("explore", "leftbracket", "explore.prev_category", function() switch_category(-1) end)
 	input.bind("explore", "home", "explore.home", function() park_on_player(); say_tile() end)
+	input.bind("explore", "f", "explore.facing", say_facing)
 	input.bind("explore", "slash", "explore.mark", place_marker)
 	input.bind("explore", "shift+slash", "explore.unmark", clear_marker)
 	input.bind("explore", "ctrl+shift+slash", "explore.unmark_all", clear_all_markers)

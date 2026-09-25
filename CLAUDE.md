@@ -191,7 +191,9 @@ category, one distinct label or all, none in rules; every category or kind switc
 (Manhattan, ties in reading order) an anchor = the cursor before the run of switches, reset by any
 other cursor move, in levels and on the map, so switching back and forth is stable), slash places "marker n" on the cursor's
 tile (per level, in memory for the session; Shift+slash clears the tile's, Ctrl+Shift+slash all;
-a marker is read as tile contents and stops the skip), Home parks the cursor on the player, C the player's coordinates alone, T the rules, H where you are, L the object counts. On the
+a marker is read as tile contents and stops the skip), Home parks the cursor on the player, F the facing of the cursor tile's objects (only those whose
+sprite shows it, `level_state.shows_facing`: tiling 0, 2, 3; hidden facing stays hidden, parity
+with sighted play, decided), C the player's coordinates alone, T the rules, H where you are, L the object counts. On the
 world map (`map` layer, `state.is_map()`): the arrows are the GAME's and walk its cursor, every tile
 spoken; period/comma are a reading cursor over the map with categories levels, rules, all, and Home
 returns it to the game cursor, C the game cursor's coordinates alone; L opens the level

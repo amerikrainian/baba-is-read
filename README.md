@@ -35,6 +35,7 @@ The game's own keys are unchanged, except that inside a level the arrows belong 
 | Home | Reading position back to you or the map cursor |
 | C | Your coordinates alone: column, row (the map cursor on the map) |
 | T, H, L | In a level: the rules, where you are, the object counts |
+| F | In a level: the facing of what is on the cursor's tile ("baba, right"), for objects whose sprite shows it |
 | L, H | On the map: the level list (Up, Down, Enter, Escape), where the cursor is |
 | F6 | Reload the mod's Lua modules (development) |
 | Ctrl+Shift+S | Mute or unmute speech |

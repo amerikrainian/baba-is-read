@@ -68,6 +68,7 @@ return {
 	["level.ending"] = "the end",
 	["level.all_done"] = "all is done",
 	["level.no_objects"] = "no objects",
+	["level.no_facing"] = "no facing",       -- F: nothing on the tile shows a direction
 
 	-- Reading cursor categories ([ and ])
 	["cat.objects"] = "objects",
