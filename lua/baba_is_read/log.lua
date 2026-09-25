@@ -17,7 +17,7 @@ local function emit(level, fmt, ...)
 		text = tostring(fmt)
 	end
 	local line = level .. " " .. text
-	print("[BabaAccess] " .. line)
+	print("[BabaIsRead] " .. line)
 	if bridge and bridge.log then
 		pcall(bridge.log, line)
 	end

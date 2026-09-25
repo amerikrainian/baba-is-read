@@ -50,12 +50,12 @@ impl Asset {
 }
 
 pub fn fetch_releases() -> Result<Vec<ReleaseInfo>, String> {
-    // BABA_ACCESS_INSTALLER_RELEASES_URL overrides the feed so an end-to-end
+    // BABA_IS_READ_INSTALLER_RELEASES_URL overrides the feed so an end-to-end
     // test can point at a locally served release.
-    let url = std::env::var("BABA_ACCESS_INSTALLER_RELEASES_URL")
+    let url = std::env::var("BABA_IS_READ_INSTALLER_RELEASES_URL")
         .unwrap_or_else(|_| GITHUB_RELEASES_URL.to_string());
     let client = Client::builder()
-        .user_agent("BabaAccessInstaller")
+        .user_agent("BabaIsReadInstaller")
         .timeout(std::time::Duration::from_secs(30))
         .build()
         .map_err(|e| format!("Failed to create HTTP client: {e}"))?;
@@ -130,7 +130,7 @@ pub fn parse_mod_zip_version(name: &str) -> Option<String> {
 
 pub fn download_asset(asset: &Asset, dest: &std::path::Path) -> Result<(), String> {
     let client = Client::builder()
-        .user_agent("BabaAccessInstaller")
+        .user_agent("BabaIsReadInstaller")
         .timeout(std::time::Duration::from_secs(120))
         .build()
         .map_err(|e| format!("Failed to create HTTP client: {e}"))?;
@@ -179,11 +179,11 @@ mod tests {
     #[test]
     fn parses_mod_zip_version() {
         assert_eq!(
-            parse_mod_zip_version("BabaAccess-v1.0.0.zip").as_deref(),
+            parse_mod_zip_version("BabaIsRead-v1.0.0.zip").as_deref(),
             Some("1.0.0")
         );
         assert!(parse_mod_zip_version("source.zip").is_none());
-        assert!(parse_mod_zip_version("BabaAccessInstaller.exe").is_none());
+        assert!(parse_mod_zip_version("BabaIsReadInstaller.exe").is_none());
     }
 
     #[test]

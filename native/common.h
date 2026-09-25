@@ -1,4 +1,4 @@
-// Shared declarations for the Baba Access native bridge.
+// Shared declarations for the Baba Is Read native bridge.
 #ifndef BA_COMMON_H
 #define BA_COMMON_H
 
@@ -9,9 +9,9 @@
 #define BA_VERSION 1
 
 // Paths (filled in at DLL attach).
-extern char g_module_dir[MAX_PATH]; // directory holding babaaccess.dll, with trailing backslash
+extern char g_module_dir[MAX_PATH]; // directory holding babaisread.dll, with trailing backslash
 extern char g_game_root[MAX_PATH];  // the game's install directory, with trailing backslash
-extern char g_data_dir[MAX_PATH];   // %LOCALAPPDATA%\BabaAccess\, with trailing backslash
+extern char g_data_dir[MAX_PATH];   // %LOCALAPPDATA%\BabaIsRead\, with trailing backslash
 
 // log.c
 void ba_log_init(void);

@@ -9,7 +9,7 @@
 -- Global function wrapping works the same way: wrap(name, fn) replaces the game
 -- function _G[name] with a proxy that calls fn(original, ...), keeping the
 -- original so a reload can re-wrap cleanly.
-local log = require("baba_access.log")
+local log = require("baba_is_read.log")
 
 local M = {}
 
@@ -26,7 +26,7 @@ local function report(where, err)
 	log.error("%s: %s", where, tostring(err))
 	if speech and errors_spoken < 3 then
 		errors_spoken = errors_spoken + 1
-		local i18n = require("baba_access.i18n")
+		local i18n = require("baba_is_read.i18n")
 		speech.speak(i18n.t("app.error", tostring(err)), false)
 	end
 end

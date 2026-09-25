@@ -26,7 +26,7 @@ if ($GameDir -eq "") {
 }
 
 $buildDir = Join-Path $root "build"
-$dll = Join-Path $buildDir "babaaccess.dll"
+$dll = Join-Path $buildDir "babaisread.dll"
 
 if (-not $NoBuild) {
     New-Item -ItemType Directory -Force $buildDir | Out-Null
@@ -39,13 +39,13 @@ if (-not $NoBuild) {
 if (-not $NoDeploy) {
     if (-not (Test-Path (Join-Path $GameDir "Baba Is You.exe"))) { throw "Game not found at $GameDir" }
     $luaDir = Join-Path $GameDir "Data\Lua"
-    $modDir = Join-Path $luaDir "baba_access"
+    $modDir = Join-Path $luaDir "baba_is_read"
     $binDir = Join-Path $modDir "bin"
     New-Item -ItemType Directory -Force $binDir | Out-Null
 
-    # Lua: the bootstrap at the top level, the modules under baba_access\.
-    Copy-Item (Join-Path $root "lua\baba_access.lua") $luaDir -Force
-    $srcMod = Join-Path $root "lua\baba_access"
+    # Lua: the bootstrap at the top level, the modules under baba_is_read\.
+    Copy-Item (Join-Path $root "lua\baba_is_read.lua") $luaDir -Force
+    $srcMod = Join-Path $root "lua\baba_is_read"
     Get-ChildItem $srcMod -Recurse -File | ForEach-Object {
         $rel = $_.FullName.Substring($srcMod.Length + 1)
         $dest = Join-Path $modDir $rel

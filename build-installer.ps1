@@ -1,5 +1,5 @@
 # Build the standalone installer exe (installer/, Rust + wxWidgets) into
-# releases\BabaAccessInstaller.exe. Needs cargo and libclang (the wxWidgets
+# releases\BabaIsReadInstaller.exe. Needs cargo and libclang (the wxWidgets
 # build uses bindgen); LIBCLANG_PATH is probed from the usual LLVM locations.
 #
 # Adapted from the Non-Visual Calculus installer by Rashad Naqeeb (MIT),
@@ -11,8 +11,8 @@ $ErrorActionPreference = "Stop"
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $installerDir = Join-Path $scriptDir "installer"
 $releaseDir = Join-Path $scriptDir "releases"
-$targetExe = Join-Path $installerDir "target\release\baba-access-installer.exe"
-$outputExe = Join-Path $releaseDir "BabaAccessInstaller.exe"
+$targetExe = Join-Path $installerDir "target\release\baba-is-read-installer.exe"
+$outputExe = Join-Path $releaseDir "BabaIsReadInstaller.exe"
 
 if (-not (Test-Path (Join-Path $installerDir "Cargo.toml"))) {
     throw "Installer project not found: $installerDir"

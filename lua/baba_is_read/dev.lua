@@ -1,11 +1,11 @@
 -- Development channel: runs chunks sent by the native HTTP server.
 --
--- The server writes each /eval body to Data/Lua/baba_access/cmd/<id>.lua and
+-- The server writes each /eval body to Data/Lua/baba_is_read/cmd/<id>.lua and
 -- hands the id over through the bridge; tick() picks it up once per frame,
 -- runs it, and replies with the printed result. A chunk may `return` values
--- (tables are pretty-printed) and may use the BabaAccess global for the mod's
+-- (tables are pretty-printed) and may use the BabaIsRead global for the mod's
 -- modules. Errors come back as text rather than surfacing in the game.
-local log = require("baba_access.log")
+local log = require("baba_is_read.log")
 
 local M = {}
 
@@ -47,7 +47,7 @@ end
 M.dump = dump
 
 local function run(id)
-	local path = "Data/Lua/baba_access/cmd/" .. id .. ".lua"
+	local path = "Data/Lua/baba_is_read/cmd/" .. id .. ".lua"
 	local chunk, err = loadfile(path)
 	if not chunk then return "compile error: " .. tostring(err) end
 	local results = table.pack(pcall(chunk))

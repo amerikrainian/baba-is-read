@@ -10,7 +10,7 @@
 -- Game text is reused wherever it exists: game(key) reads the game's own
 -- language files through langtext, so button labels follow the game's language
 -- without any work on our side.
-local log = require("baba_access.log")
+local log = require("baba_is_read.log")
 
 local M = {}
 
@@ -20,7 +20,7 @@ local current = "en"
 local warned = {}
 
 local function load_table(code)
-	local ok, tbl = pcall(require, "baba_access.lang." .. code)
+	local ok, tbl = pcall(require, "baba_is_read.lang." .. code)
 	if ok and type(tbl) == "table" then return tbl end
 	return nil
 end

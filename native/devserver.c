@@ -8,7 +8,7 @@
 //   GET  /keys                -> the captured virtual-key set
 //
 // /eval works through a command file: the chunk is written to
-// Data/Lua/baba_access/cmd/<id>.lua, the Lua side polls baba_dev_poll() each frame,
+// Data/Lua/baba_is_read/cmd/<id>.lua, the Lua side polls baba_dev_poll() each frame,
 // runs the file, and answers with baba_dev_reply(id, text).
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -89,7 +89,7 @@ static void handle_eval(SOCKET s, const char *path, const char *body, size_t ble
     static int counter;
     int id = ++counter;
     char dir[MAX_PATH], file[MAX_PATH];
-    snprintf(dir, sizeof dir, "%sData\\Lua\\baba_access\\cmd", g_game_root);
+    snprintf(dir, sizeof dir, "%sData\\Lua\\baba_is_read\\cmd", g_game_root);
     CreateDirectoryA(dir, NULL);
     snprintf(file, sizeof file, "%s\\%d.lua", dir, id);
     FILE *f = fopen(file, "wb");

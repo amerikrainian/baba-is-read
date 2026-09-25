@@ -1,4 +1,4 @@
-// Session log: %LOCALAPPDATA%\BabaAccess\baba_access.log, truncated at DLL attach.
+// Session log: %LOCALAPPDATA%\BabaIsRead\baba_is_read.log, truncated at DLL attach.
 #include "common.h"
 #include <stdio.h>
 #include <stdarg.h>
@@ -11,7 +11,7 @@ static int g_log_ready;
 void ba_log_init(void) {
     if (g_log_ready) return;
     InitializeCriticalSection(&g_log_cs);
-    snprintf(g_log_path, sizeof g_log_path, "%sbaba_access.log", g_data_dir);
+    snprintf(g_log_path, sizeof g_log_path, "%sbaba_is_read.log", g_data_dir);
     FILE *f = fopen(g_log_path, "w");
     if (f) fclose(f);
     g_log_ready = 1;

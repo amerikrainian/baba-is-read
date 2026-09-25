@@ -1,5 +1,5 @@
 -- Settings. Defaults here; a value stored in the game's own settings file
--- (section [baba_access], written through MF_store) overrides its default, so
+-- (section [baba_is_read], written through MF_store) overrides its default, so
 -- the game keeps our settings next to its own and the settings menu can edit
 -- them later.
 local M = {}
@@ -29,7 +29,7 @@ function M.load()
 	for k, default in pairs(defaults) do
 		local raw = nil
 		if type(MF_read) == "function" then
-			local ok, r = pcall(MF_read, "settings", "baba_access", k)
+			local ok, r = pcall(MF_read, "settings", "baba_is_read", k)
 			if ok then raw = r end
 		end
 		values[k] = coerce(default, raw)
@@ -47,7 +47,7 @@ function M.set(key, value)
 	if type(MF_store) == "function" then
 		local raw = value
 		if type(value) == "boolean" then raw = value and "1" or "0" end
-		pcall(MF_store, "settings", "baba_access", key, tostring(raw))
+		pcall(MF_store, "settings", "baba_is_read", key, tostring(raw))
 	end
 end
 

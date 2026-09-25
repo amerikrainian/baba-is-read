@@ -1,4 +1,4 @@
-# Baba Access
+# Baba Is Read
 
 A screen-reader accessibility mod for Baba Is You (Steam, Windows). Speech goes to NVDA, JAWS or SAPI through Prism.
 
@@ -43,16 +43,16 @@ Press F1 anywhere for the list of keys that work right there; Enter on a row doe
 
 ## Install
 
-Download `BabaAccessInstaller.exe` from the
-[latest release](https://github.com/amerikrainian/baba-access/releases) and run it. It finds your
+Download `BabaIsReadInstaller.exe` from the
+[latest release](https://github.com/amerikrainian/baba-is-read/releases) and run it. It finds your
 Steam install, downloads the mod, and can later update, repair, or uninstall it. Manual alternative:
-extract the release zip (`BabaAccess-vX.Y.Z.zip`) over the game folder (the one holding
-`Baba Is You.exe`); it puts `baba_access.lua` and a `baba_access` folder into `Data\Lua`.
+extract the release zip (`BabaIsRead-vX.Y.Z.zip`) over the game folder (the one holding
+`Baba Is You.exe`); it puts `baba_is_read.lua` and a `baba_is_read` folder into `Data\Lua`.
 
-Launch the game through Steam afterwards. The title screen says "Baba Access loaded" when the mod
+Launch the game through Steam afterwards. The title screen says "Baba Is Read loaded" when the mod
 is running; press F1 anywhere for the keys. To update, run the installer again and choose Update,
 or extract the newer zip over the game folder. To remove the mod, the installer's Uninstall puts
-the game folder back as it was; by hand, delete `Data\Lua\baba_access.lua` and `Data\Lua\baba_access`.
+the game folder back as it was; by hand, delete `Data\Lua\baba_is_read.lua` and `Data\Lua\baba_is_read`.
 
 ## Install (development)
 
@@ -62,21 +62,21 @@ Requirements: the game on Steam, gcc (scoop or MSYS2), and `uv` for the Python d
 .\build.ps1
 ```
 
-This compiles the native bridge and copies the mod into `<game>\Data\Lua`. The game folder is found through `-GameDir`, `BABA_DIR`, or the Steam default. Launch the game normally afterwards; the title screen says "Baba Access loaded".
+This compiles the native bridge and copies the mod into `<game>\Data\Lua`. The game folder is found through `-GameDir`, `BABA_DIR`, or the Steam default. Launch the game normally afterwards; the title screen says "Baba Is Read loaded".
 
 ## Layout
 
 - `native/` – the bridge DLL: speech (Prism), logging, key capture, focus handling, and the dev HTTP server. `luastack.h` explains how a DLL talks to the game's Lua without the Lua C API.
-- `lua/baba_access.lua` – bootstrap the game runs at startup.
-- `lua/baba_access/` – the mod: `main` wiring, `bridge`, `hooks`, `speech`, `i18n` and `lang/`, `input`, `config`, `dev`, and `ui/` for the menu announcer, list navigation and per-menu overrides.
+- `lua/baba_is_read.lua` – bootstrap the game runs at startup.
+- `lua/baba_is_read/` – the mod: `main` wiring, `bridge`, `hooks`, `speech`, `i18n` and `lang/`, `input`, `config`, `dev`, and `ui/` for the menu announcer, list navigation and per-menu overrides.
 - `tools/dev.py` – drives the running game from a terminal (see below).
 - `third_party/prism/` – vendored Prism release.
 
 ## Releases
 
 ```
-.\build_release.ps1              # releases\BabaAccess-v<version>.zip, the version from lua\baba_access\version.lua
-.\build-installer.ps1            # releases\BabaAccessInstaller.exe (installer\, Rust + wxWidgets: cargo, libclang, ninja)
+.\build_release.ps1              # releases\BabaIsRead-v<version>.zip, the version from lua\baba_is_read\version.lua
+.\build-installer.ps1            # releases\BabaIsReadInstaller.exe (installer\, Rust + wxWidgets: cargo, libclang, ninja)
 .\test-installer.ps1             # the installer's unit tests
 .\create-release.ps1 vX.Y.Z      # the GitHub release for the pushed tag, the CHANGELOG.md section as notes
 ```
@@ -87,7 +87,7 @@ the installer's version check all follow that one string. The installer is adapt
 (MIT). `installer\src\core\paths.rs` holds the game facts it relies on (the exe and folder names,
 `Data\modsupport.lua` as the install marker, the mod's paths, the releases URL). A dev box drives it
 without the elevation prompt through `cargo run --release --example cli` in `installer\`, with
-`BABA_DIR` pointing at a game folder and `BABA_ACCESS_INSTALLER_RELEASES_URL` at a local copy of
+`BABA_DIR` pointing at a game folder and `BABA_IS_READ_INSTALLER_RELEASES_URL` at a local copy of
 the releases feed.
 
 ## Development loop
@@ -98,15 +98,15 @@ uv run python tools/dev.py state      # where the game is
 uv run python tools/dev.py key down down enter
 uv run python tools/dev.py speech --tail 10
 uv run python tools/dev.py menu       # dump of the open menu
-uv run python tools/dev.py eval -e 'return BabaAccess.config.all()'
+uv run python tools/dev.py eval -e 'return BabaIsRead.config.all()'
 uv run python tools/dev.py reload     # after editing Lua; a DLL change needs a relaunch
 uv run python tools/dev.py kill
 ```
 
 Synthetic keys work while the game is in the background; nothing brings its window forward. Run the game windowed while developing: a fullscreen window minimizes when it loses focus, and a minimized window drops the synthetic mouse clicks that dialogs need. Check `state` before posting Enter: the title screen advances on its own once a key is pressed, and Enter on the main menu starts the game.
 
-The session log is `%LOCALAPPDATA%\BabaAccess\baba_access.log`, and `dev.py log --grep speech` shows what was said.
+The session log is `%LOCALAPPDATA%\BabaIsRead\baba_is_read.log`, and `dev.py log --grep speech` shows what was said.
 
 ## Localization
 
-Mod strings live in `lua/baba_access/lang/<code>.lua`, keyed like `role.slider` or `menu.settings`, with `{0}` placeholders. The language follows the game's own setting and falls back to English; a missing key is spoken as the key. Button labels are the game's own text, so they are already in the game's language.
+Mod strings live in `lua/baba_is_read/lang/<code>.lua`, keyed like `role.slider` or `menu.settings`, with `{0}` placeholders. The language follows the game's own setting and falls back to English; a missing key is spoken as the key. Button labels are the game's own text, so they are already in the game's language.

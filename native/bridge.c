@@ -133,13 +133,13 @@ BOOL WINAPI DllMain(HINSTANCE h, DWORD reason, LPVOID reserved) {
         GetModuleFileNameA(h, g_module_dir, MAX_PATH);
         char *slash = strrchr(g_module_dir, '\\');
         if (slash) slash[1] = 0;
-        // Deployed at <game>\Data\Lua\baba_access\bin\babaaccess.dll.
+        // Deployed at <game>\Data\Lua\baba_is_read\bin\babaisread.dll.
         strcpy(g_game_root, g_module_dir);
         strip_components(g_game_root, 4);
         char local[MAX_PATH];
         DWORD n = GetEnvironmentVariableA("LOCALAPPDATA", local, MAX_PATH);
         if (n == 0 || n >= MAX_PATH) strcpy(local, g_game_root);
-        snprintf(g_data_dir, MAX_PATH, "%s\\BabaAccess\\", local);
+        snprintf(g_data_dir, MAX_PATH, "%s\\BabaIsRead\\", local);
         CreateDirectoryA(g_data_dir, NULL);
         ba_log_init();
         ba_logf("bridge: attached, version %d, module %s, game root %s", BA_VERSION, g_module_dir, g_game_root);

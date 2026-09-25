@@ -12,8 +12,8 @@
 -- is active, and takes every key from the game as well, so the screen under
 -- it stands still. live() lists what would answer a key right now, for the
 -- help; press(row) runs a listed action as its key would.
-local log = require("baba_access.log")
-local hooks = require("baba_access.hooks")
+local log = require("baba_is_read.log")
+local hooks = require("baba_is_read.hooks")
 
 local M = {}
 

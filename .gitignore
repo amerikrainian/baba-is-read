@@ -2,7 +2,7 @@
 build/
 
 # Runtime files the dev server writes into the deployed mod (never in the repo)
-lua/baba_access/cmd/
+lua/baba_is_read/cmd/
 
 # Python
 __pycache__/

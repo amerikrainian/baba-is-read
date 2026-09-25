@@ -1,4 +1,4 @@
--- Native bridge: loads babaaccess.dll through package.loadlib and verifies the
+-- Native bridge: loads babaisread.dll through package.loadlib and verifies the
 -- stack layout it depends on before anything else trusts it.
 --
 -- The exports take and return plain Lua values, but the DLL reads them straight
@@ -7,7 +7,7 @@
 -- than corrupting memory.
 local M = {}
 
-local DLL = "Data/Lua/baba_access/bin/babaaccess.dll"
+local DLL = "Data/Lua/baba_is_read/bin/babaisread.dll"
 
 local EXPORTS = {
 	"baba_version", "baba_selftest", "baba_selftest2",

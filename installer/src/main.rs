@@ -3,7 +3,7 @@
 
 #![windows_subsystem = "windows"]
 
-use baba_access_installer::{cli, gui};
+use baba_is_read_installer::{cli, gui};
 
 fn main() {
     if std::env::args().any(|a| a == "--cli") {

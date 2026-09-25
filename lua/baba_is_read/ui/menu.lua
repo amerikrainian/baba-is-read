@@ -254,7 +254,7 @@ end
 function M.attach(m)
 	mods = m
 	speech, i18n, hooks, config, input, log = m.speech, m.i18n, m.hooks, m.config, m.input, m.log
-	overrides = require("baba_access.ui.menu_overrides")
+	overrides = require("baba_is_read.ui.menu_overrides")
 	last = nil
 	install_wrappers()
 	input.bind("global", "F5", "menu.repeat", function() M.announce_focus(true) end)

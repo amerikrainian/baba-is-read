@@ -3,9 +3,9 @@
 -- fragments without trailing punctuation unless they are whole sentences.
 return {
 	-- Application
-	["app.loaded"] = "Baba Access loaded",
-	["app.reloaded"] = "Baba Access reloaded",
-	["app.error"] = "Baba Access error: {0}",
+	["app.loaded"] = "Baba Is Read loaded",
+	["app.reloaded"] = "Baba Is Read reloaded",
+	["app.error"] = "Baba Is Read error: {0}",
 	["app.speech_muted"] = "speech muted",
 	["app.speech_unmuted"] = "speech on",
 

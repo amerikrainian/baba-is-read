@@ -2,7 +2,7 @@
 -- supports hot reload (F6 or the dev server) without restarting the game.
 local M = {}
 
-local MODULE_PREFIX = "baba_access."
+local MODULE_PREFIX = "baba_is_read."
 
 local function require_fresh(name)
 	package.loaded[name] = nil
@@ -11,32 +11,32 @@ end
 
 -- Modules that own state across reloads keep it; everything else is re-required.
 local function load_modules(reloading)
-	local bridge = require("baba_access.bridge")
-	local log = require("baba_access.log")
-	local hooks = require("baba_access.hooks")
+	local bridge = require("baba_is_read.bridge")
+	local log = require("baba_is_read.log")
+	local hooks = require("baba_is_read.hooks")
 	local mods = {
 		bridge = bridge,
 		log = log,
 		hooks = hooks,
-		config = require_fresh("baba_access.config"),
-		i18n = require_fresh("baba_access.i18n"),
-		speech = require_fresh("baba_access.speech"),
-		input = require_fresh("baba_access.input"),
-		dev = require_fresh("baba_access.dev"),
+		config = require_fresh("baba_is_read.config"),
+		i18n = require_fresh("baba_is_read.i18n"),
+		speech = require_fresh("baba_is_read.speech"),
+		input = require_fresh("baba_is_read.input"),
+		dev = require_fresh("baba_is_read.dev"),
 	}
 	-- Screens: each exposes attach(mods) and optionally tick(); loaded fresh so edits apply on reload.
-	package.loaded["baba_access.ui.menu_overrides"] = nil
-	mods.menu = require_fresh("baba_access.ui.menu")
-	mods.menu_nav = require_fresh("baba_access.ui.menu_nav")
-	mods.dialog = require_fresh("baba_access.ui.dialog")
-	mods.level_state = require_fresh("baba_access.ui.level_state")
-	mods.events = require_fresh("baba_access.ui.events")
-	mods.level = require_fresh("baba_access.ui.level")
-	mods.explore = require_fresh("baba_access.ui.explore")
-	mods.map = require_fresh("baba_access.ui.map")
-	mods.credits = require_fresh("baba_access.ui.credits")
-	mods.game_keys = require_fresh("baba_access.ui.game_keys")
-	mods.help = require_fresh("baba_access.ui.help")
+	package.loaded["baba_is_read.ui.menu_overrides"] = nil
+	mods.menu = require_fresh("baba_is_read.ui.menu")
+	mods.menu_nav = require_fresh("baba_is_read.ui.menu_nav")
+	mods.dialog = require_fresh("baba_is_read.ui.dialog")
+	mods.level_state = require_fresh("baba_is_read.ui.level_state")
+	mods.events = require_fresh("baba_is_read.ui.events")
+	mods.level = require_fresh("baba_is_read.ui.level")
+	mods.explore = require_fresh("baba_is_read.ui.explore")
+	mods.map = require_fresh("baba_is_read.ui.map")
+	mods.credits = require_fresh("baba_is_read.ui.credits")
+	mods.game_keys = require_fresh("baba_is_read.ui.game_keys")
+	mods.help = require_fresh("baba_is_read.ui.help")
 	return mods
 end
 
@@ -70,16 +70,16 @@ local function bind_global_keys()
 end
 
 function M.start(reloading)
-	local bridge = require("baba_access.bridge")
+	local bridge = require("baba_is_read.bridge")
 	local ok, err = bridge.load()
-	local log = require("baba_access.log")
+	local log = require("baba_is_read.log")
 	if not ok then
-		print("[BabaAccess] bridge unavailable: " .. tostring(err))
+		print("[BabaIsRead] bridge unavailable: " .. tostring(err))
 		error("bridge unavailable: " .. tostring(err))
 	end
 	log.attach(bridge)
-	local ok_v, version = pcall(require, "baba_access.version")
-	log.info("start%s: Baba Access %s, Lua %s, game %s", reloading and " (reload)" or "",
+	local ok_v, version = pcall(require, "baba_is_read.version")
+	log.info("start%s: Baba Is Read %s, Lua %s, game %s", reloading and " (reload)" or "",
 		ok_v and tostring(version) or "?", _VERSION,
 		type(MF_getversion) == "function" and tostring(MF_getversion()) or "?")
 
@@ -113,7 +113,7 @@ function M.start(reloading)
 	mods.help.attach(mods)   -- last: its layer sits on top of every other
 	hooks.on("always", "main.tick", tick)
 
-	_G.BabaAccess = setmetatable({ mods = mods, reload = M.reload, frame = function() return frame end }, {
+	_G.BabaIsRead = setmetatable({ mods = mods, reload = M.reload, frame = function() return frame end }, {
 		__index = function(_, k) return mods[k] end,
 	})
 
@@ -125,15 +125,15 @@ end
 -- Re-requires every mod module, including this one, except the bridge, the log
 -- and the hook trampolines, then starts the fresh copy.
 function M.reload()
-	local log = require("baba_access.log")
+	local log = require("baba_is_read.log")
 	log.info("reload requested")
 	for name in pairs(package.loaded) do
-		if name:sub(1, #MODULE_PREFIX) == MODULE_PREFIX and name ~= "baba_access.bridge"
-			and name ~= "baba_access.hooks" and name ~= "baba_access.log" then
+		if name:sub(1, #MODULE_PREFIX) == MODULE_PREFIX and name ~= "baba_is_read.bridge"
+			and name ~= "baba_is_read.hooks" and name ~= "baba_is_read.log" then
 			package.loaded[name] = nil
 		end
 	end
-	local ok, fresh = pcall(require, "baba_access.main")
+	local ok, fresh = pcall(require, "baba_is_read.main")
 	local err = nil
 	if ok then ok, err = pcall(fresh.start, true) else err = fresh end
 	if not ok then

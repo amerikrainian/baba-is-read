@@ -179,7 +179,7 @@ end
 function M.attach(m)
 	mods = m
 	hooks, input, menu, i18n = m.hooks, m.input, m.menu, m.i18n
-	overrides = require("baba_access.ui.menu_overrides")
+	overrides = require("baba_is_read.ui.menu_overrides")
 	M.reset()
 	-- The pause menu: the active rules as a strip, labelled with the game's
 	-- own "Rules" heading.

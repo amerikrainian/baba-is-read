@@ -3,7 +3,7 @@
 --
 -- Convention (from guildrun): navigation moves interrupt; screen entry and
 -- feedback queue. Callers decide; this module only carries the flag through.
-local log = require("baba_access.log")
+local log = require("baba_is_read.log")
 
 local M = {}
 

@@ -288,7 +288,7 @@ pub fn temp_session_dir() -> PathBuf {
         .map(|d| d.as_nanos())
         .unwrap_or(0);
     std::env::temp_dir()
-        .join("BabaAccessInstaller")
+        .join("BabaIsReadInstaller")
         .join(format!("{}-{nanos}", std::process::id()))
 }
 
@@ -314,9 +314,9 @@ mod tests {
     use crate::core::github::Asset;
     use crate::core::uninstall;
 
-    const MAIN_REL: &str = "Data/Lua/baba_access/main.lua";
-    const LANG_REL: &str = "Data/Lua/baba_access/lang/en.lua";
-    const PRISM_REL: &str = "Data/Lua/baba_access/bin/prism.dll";
+    const MAIN_REL: &str = "Data/Lua/baba_is_read/main.lua";
+    const LANG_REL: &str = "Data/Lua/baba_is_read/lang/en.lua";
+    const PRISM_REL: &str = "Data/Lua/baba_is_read/bin/prism.dll";
 
     /// A vanilla install: the exe, the Lua data, and an EMPTY Data/Lua (the game ships it).
     fn write_vanilla_game(dir: &Path) {
@@ -334,8 +334,8 @@ mod tests {
         assert!(safe_zip_entry_name(paths::BRIDGE_REL).is_some());
         // Compress-Archive on Windows PowerShell writes backslash entry names.
         assert_eq!(
-            safe_zip_entry_name("Data\\Lua\\baba_access.lua"),
-            Some(PathBuf::from("Data").join("Lua").join("baba_access.lua"))
+            safe_zip_entry_name("Data\\Lua\\baba_is_read.lua"),
+            Some(PathBuf::from("Data").join("Lua").join("baba_is_read.lua"))
         );
     }
 
@@ -531,7 +531,7 @@ mod tests {
             &zip1,
             &[
                 (MAIN_REL, "main"),
-                ("Data/Lua/baba_access/ui/old_screen.lua", "gone in v2"),
+                ("Data/Lua/baba_is_read/ui/old_screen.lua", "gone in v2"),
             ],
         );
         let m1 = install_from_zip(
@@ -554,8 +554,8 @@ mod tests {
         )
         .unwrap();
 
-        assert!(!dir.path().join("Data/Lua/baba_access/ui/old_screen.lua").exists());
-        assert!(!dir.path().join("Data/Lua/baba_access/ui").exists());
+        assert!(!dir.path().join("Data/Lua/baba_is_read/ui/old_screen.lua").exists());
+        assert!(!dir.path().join("Data/Lua/baba_is_read/ui").exists());
         assert_eq!(
             fs::read_to_string(dir.path().join(MAIN_REL)).unwrap(),
             "main v2"
@@ -572,7 +572,7 @@ mod tests {
         let file = fs::File::create(&zip_path).unwrap();
         let mut zip = zip::ZipWriter::new(file);
         let options = zip::write::SimpleFileOptions::default();
-        zip.add_directory("Data/Lua/baba_access/cmd", options).unwrap();
+        zip.add_directory("Data/Lua/baba_is_read/cmd", options).unwrap();
         zip.start_file(MAIN_REL, options).unwrap();
         zip.write_all(b"main").unwrap();
         zip.finish().unwrap();
@@ -585,7 +585,7 @@ mod tests {
             &InstallState::Fresh,
         )
         .unwrap();
-        assert!(dir.path().join("Data/Lua/baba_access/cmd").is_dir());
+        assert!(dir.path().join("Data/Lua/baba_is_read/cmd").is_dir());
 
         uninstall::uninstall(dir.path(), &manifest).unwrap();
         assert!(!dir.path().join(paths::MOD_DIR_REL).exists());
@@ -607,7 +607,7 @@ mod tests {
         )
         .unwrap();
         // Something the installer never owned (the dev server's scratch, say).
-        let scratch = dir.path().join("Data/Lua/baba_access/cmd/1.lua");
+        let scratch = dir.path().join("Data/Lua/baba_is_read/cmd/1.lua");
         fs::create_dir_all(scratch.parent().unwrap()).unwrap();
         fs::write(&scratch, "return 1").unwrap();
 
@@ -629,7 +629,7 @@ mod tests {
 
     fn test_asset() -> Asset {
         Asset {
-            name: "BabaAccess-v1.2.3.zip".to_string(),
+            name: "BabaIsRead-v1.2.3.zip".to_string(),
             browser_download_url: "https://example.invalid/release.zip".to_string(),
             digest: None,
         }

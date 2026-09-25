@@ -33,7 +33,7 @@ DEFAULT_GAME = r"C:\Program Files (x86)\Steam\steamapps\common\Baba Is You"
 GAME_DIR = Path(os.environ.get("BABA_DIR", DEFAULT_GAME))
 PORT = int(os.environ.get("BABA_DEV_PORT", "8772"))
 BASE = f"http://127.0.0.1:{PORT}"
-DATA_DIR = Path(os.environ.get("LOCALAPPDATA", ".")) / "BabaAccess"
+DATA_DIR = Path(os.environ.get("LOCALAPPDATA", ".")) / "BabaIsRead"
 STDOUT_FILE = DATA_DIR / "stdout.txt"
 EXE = "Baba Is You.exe"
 
@@ -170,7 +170,7 @@ def run_lua(chunk):
 
 
 def cmd_menu(args):
-    return run_lua("return BabaAccess.menu.dump()")
+    return run_lua("return BabaIsRead.menu.dump()")
 
 
 def cmd_state(args):
@@ -183,14 +183,14 @@ s.menustack = menu
 s.world = generaldata.strings[WORLD]
 s.level = generaldata.strings[CURRLEVEL]
 s.levelname = generaldata.strings[LEVELNAME]
-s.frame = BabaAccess.frame()
-s.bindings = BabaAccess.input.bindings()
+s.frame = BabaIsRead.frame()
+s.bindings = BabaIsRead.input.bindings()
 return s
 """)
 
 
 def cmd_reload(args):
-    return run_lua("return BabaAccess.reload()")
+    return run_lua("return BabaIsRead.reload()")
 
 
 def cmd_stdout(args):

@@ -1,4 +1,4 @@
-# Baba Access — Accessibility Mod for Baba Is You
+# Baba Is Read — Accessibility Mod for Baba Is You
 
 Screen-reader accessibility mod for blind players. Speaks the menus, and (later) the level map and the
 levels themselves, via Prism. Sibling project to guildrun_access (the readout conventions, the dev
@@ -20,12 +20,12 @@ and nothing caches game state the game can be asked for live.
   `turn_end`, `rule_update`, `undoed`, `keyboard_input` with the key NAME as a string, ...).
   `Data\Languages\lang_<code>.txt` are the game's strings (`langtext(key, caps, emptyreturn)`).
 - **Mod loading**: the engine's `setupmods_global` runs every `Data\Lua\*.lua` at startup, sorted,
-  NOT recursive. Ours is `baba_access.lua` alone; the modules under `Data\Lua\baba_access\` are
+  NOT recursive. Ours is `baba_is_read.lua` alone; the modules under `Data\Lua\baba_is_read\` are
   `require`d after it puts `Data/Lua/?.lua` on `package.path`. Levelpack mods
   (`Data\Worlds\<world>\Lua\`) are a separate, later mechanism we do not use.
 - **Sandbox**: no `io`, `os`, `coroutine`, `utf8`, `loadstring`. Present: `package` with `loadlib`,
   `require`, `load`, `loadfile`/`dofile` on ANY path, the full `debug` library, `print` to the
-  process stdout (lost under Steam; `dev.py launch` captures it to `%LOCALAPPDATA%\BabaAccess\stdout.txt`).
+  process stdout (lost under Steam; `dev.py launch` captures it to `%LOCALAPPDATA%\BabaIsRead\stdout.txt`).
 - **Native code from Lua**: `package.loadlib(dll, name)` returns `int name(lua_State*)` as a Lua
   function. The DLL reads its arguments and pushes integers/booleans by the fixed 5.3.4 struct layouts
   (`native/luastack.h`: `L->top` at +16, `L->ci` at +32, `CallInfo->func` at 0, 16-byte `TValue`,
@@ -95,33 +95,33 @@ and nothing caches game state the game can be asked for live.
 - `speech [--since N] [--tail N]`: what was spoken, tagged interrupt/queue, with a cursor.
 - `log [--tail N] [--grep S]`, `stdout`, `keys` (the capture set and the input-path counters),
   `menu` (the open menu: rows of `id = readout`, static text, focus), `eval FILE|-|-e CHUNK` (a Lua
-  chunk in the game; tables pretty-printed; `BabaAccess` is the mod), `reload`.
+  chunk in the game; tables pretty-printed; `BabaIsRead` is the mod), `reload`.
 
 ## Build & deploy
 ```
-.\build.ps1              # gcc (scoop/MSYS2 mingw) -> build\babaaccess.dll, then deploy
+.\build.ps1              # gcc (scoop/MSYS2 mingw) -> build\babaisread.dll, then deploy
 .\build.ps1 -NoBuild     # Lua only
 ```
-Deploys `lua\baba_access.lua` to `<game>\Data\Lua\`, `lua\baba_access\**` to `Data\Lua\baba_access\`,
-and `babaaccess.dll` + `prism.dll` to `Data\Lua\baba_access\bin\`. **A running game locks both DLLs**
+Deploys `lua\baba_is_read.lua` to `<game>\Data\Lua\`, `lua\baba_is_read\**` to `Data\Lua\baba_is_read\`,
+and `babaisread.dll` + `prism.dll` to `Data\Lua\baba_is_read\bin\`. **A running game locks both DLLs**
 (the copy warns and continues; a DLL change needs `dev.py kill` + `launch`). Lua changes take with
-`dev.py reload` or F6, which re-requires every `baba_access.*` module including `main` (only
+`dev.py reload` or F6, which re-requires every `baba_is_read.*` module including `main` (only
 `bridge`, `hooks` and `log` persist). `Data\Lua` is empty in the vanilla install, so a Steam update
-does not touch us; `Data\Lua\baba_access\cmd\` is the eval channel's scratch (gitignored).
+does not touch us; `Data\Lua\baba_is_read\cmd\` is the eval channel's scratch (gitignored).
 
 ## Release (`releases\`, `obj\` and `installer\target\` are gitignored)
-- The version is ONE string, `lua\baba_access\version.lua` (`return "X.Y.Z"`, logged at start): the
-  tag `vX.Y.Z`, the zip `BabaAccess-vX.Y.Z.zip` and the installer's installed-version check all read
+- The version is ONE string, `lua\baba_is_read\version.lua` (`return "X.Y.Z"`, logged at start): the
+  tag `vX.Y.Z`, the zip `BabaIsRead-vX.Y.Z.zip` and the installer's installed-version check all read
   it. Bump it with a `## VX.Y.Z` section in `CHANGELOG.md` (the release notes; the heading is exact).
 - `build_release.ps1`: `build.ps1 -NoDeploy` for a fresh DLL, then the deploy layout staged under
-  `obj\release-stage` (`Data\Lua\baba_access.lua`, `Data\Lua\baba_access\**` minus `cmd\`, both
+  `obj\release-stage` (`Data\Lua\baba_is_read.lua`, `Data\Lua\baba_is_read\**` minus `cmd\`, both
   DLLs under `bin\`) and zipped; the zip root IS the game folder.
-- `build-installer.ps1`: `releases\BabaAccessInstaller.exe` from `installer\` (Rust + wxWidgets, the
+- `build-installer.ps1`: `releases\BabaIsReadInstaller.exe` from `installer\` (Rust + wxWidgets, the
   guildrun installer adapted from Non-Visual Calculus: needs cargo, libclang, ninja, all probed;
   `test-installer.ps1` runs its unit tests). It finds the Steam install (registry, library folders,
   `BABA_DIR`), downloads the newest release's zip, verifies the sha256 GitHub publishes, installs with
   backups of anything it overwrites and an install manifest
-  (`Data\Lua\baba_access\install.json`, backups under `...\backups\`), updates (pruning files the
+  (`Data\Lua\baba_is_read\install.json`, backups under `...\backups\`), updates (pruning files the
   new zip no longer ships), repairs an unmanaged (hand-unzipped or dev-deployed) install, uninstalls
   by restoring the backups. **Uninstall never removes `Data\Lua` itself** (vanilla has it, empty;
   `paths::mod_root` stops the parent sweep) and never touches a file it did not install (the dev
@@ -131,12 +131,12 @@ does not touch us; `Data\Lua\baba_access\cmd\` is the eval channel's scratch (gi
   the CHANGELOG section as notes. Tags are strict three-part: the installer matches the asset name.
 - End to end without UAC: `cargo run --release --example cli` in `installer\` with `BABA_DIR` at a
   game folder (a fake one is the exe plus `Data\modsupport.lua` and an empty `Data\Lua`) and
-  `BABA_ACCESS_INSTALLER_RELEASES_URL` at a locally served releases JSON whose asset URL points at the
+  `BABA_IS_READ_INSTALLER_RELEASES_URL` at a locally served releases JSON whose asset URL points at the
   zip (`python -m http.server`); stdin answers the prompts (`y`, then `1` install, `3` uninstall, `4`).
   The GUI exe requires elevation and is run by hand.
 
 ## Logs
-`%LOCALAPPDATA%\BabaAccess\baba_access.log`, truncated each launch: the bridge's own lines, every
+`%LOCALAPPDATA%\BabaIsRead\baba_is_read.log`, truncated each launch: the bridge's own lines, every
 Lua `log.info/warn/error`, and every spoken line (`speech!:` interrupt, `speech:` queued). An uncaught
 Lua error anywhere in the game's Lua opens the game's fatal "Lua error / please report this to the
 developers" dialog and stops the frame, which is why every entry point of ours is wrapped.
@@ -166,16 +166,16 @@ hooks, and rules from the `features` tables.
   `PostMessage`, pretend focus, release of engine-held keys on real focus loss) with `iat.c`
   hooking the exe's USER32 imports, `devserver.c` the loopback HTTP server and the eval command
   channel (chunk written to `cmd\<id>.lua`, id handed to Lua, reply text back through `baba_dev_reply`).
-- `lua/baba_access/`: `main.lua` (start, the per-frame tick on the `always` hook: input, dev, menu;
-  `reload`; the `BabaAccess` global), `bridge.lua`, `hooks.lua` (one trampoline per game hook with a
+- `lua/baba_is_read/`: `main.lua` (start, the per-frame tick on the `always` hook: input, dev, menu;
+  `reload`; the `BabaIsRead` global), `bridge.lua`, `hooks.lua` (one trampoline per game hook with a
   registry behind it, `wrap(name, fn)` for game globals with the original kept, `guard`), `speech.lua`
   (`speak(text, interrupt)`, `clean` strips the game's `$x,y` colour codes, `join`), `i18n.lua`
   (`t(key, ...)`, `has`, `game(key)` = the game's own `langtext` with empty-on-missing), `lang/en.lua`,
   `input.lua` (named keys, layers with an `active()` predicate, exclusive layers, the capture set
   synced to the active layers every frame, dispatch on key down, `repeat_ok`, `live()` and `press()`
-  for the help), `config.lua` (defaults; `[baba_access]` in
+  for the help), `config.lua` (defaults; `[baba_is_read]` in
   the game's settings INI through `MF_read`/`MF_store`), `dev.lua` (runs the command file, replies).
-- `lua/baba_access/ui/`: `menu.lua` (`current()`, `describe(state)`, `static_text`, `title`, `tick`,
+- `lua/baba_is_read/ui/`: `menu.lua` (`current()`, `describe(state)`, `static_text`, `title`, `tick`,
   `details`, `dump`), `menu_nav.lua` (`applies`, `active`, `items`, `index`),
   `menu_overrides.lua` (per menu: `items[id] = {kind = toggle|radio|slider|button, label = <game
   lang key>}`, `default_kind`, `list`, `hidden_text`). `level.lua` composes the turn line, `events.lua` (attached
@@ -321,4 +321,4 @@ are ours because the game draws most menus without a name.
    GitHub release script, README install section. Open: settings in the game's settings menu;
    `dev_enabled` defaults to true, so a release ships the loopback dev server on; restore
    `fullscreen=1` in the user's settings after a dev session (it is set to 0 for the clicks); the
-   repository has no remote yet (the installer expects `amerikrainian/baba-access`).
+   repository has no remote yet (the installer expects `amerikrainian/baba-is-read`).
