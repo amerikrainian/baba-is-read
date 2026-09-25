@@ -145,8 +145,9 @@ hooks, and rules from the `features` tables.
   registry behind it, `wrap(name, fn)` for game globals with the original kept, `guard`), `speech.lua`
   (`speak(text, interrupt)`, `clean` strips the game's `$x,y` colour codes, `join`), `i18n.lua`
   (`t(key, ...)`, `has`, `game(key)` = the game's own `langtext` with empty-on-missing), `lang/en.lua`,
-  `input.lua` (named keys, layers with an `active()` predicate, the capture set synced to the active
-  layers every frame, dispatch on key down, `repeat_ok`), `config.lua` (defaults; `[baba_access]` in
+  `input.lua` (named keys, layers with an `active()` predicate, exclusive layers, the capture set
+  synced to the active layers every frame, dispatch on key down, `repeat_ok`, `live()` and `press()`
+  for the help), `config.lua` (defaults; `[baba_access]` in
   the game's settings INI through `MF_read`/`MF_store`), `dev.lua` (runs the command file, replies).
 - `lua/baba_access/ui/`: `menu.lua` (`current()`, `describe(state)`, `static_text`, `title`, `tick`,
   `details`, `dump`), `menu_nav.lua` (`applies`, `active`, `items`, `index`),
@@ -176,6 +177,11 @@ hooks, and rules from the `features` tables.
   they can review announcements without running it.
 
 ## Keys (all through the capture; the game never sees them)
+F1 the key help (`ui/help.lua`, the guildrun pattern): `input.live()` = the active layers top down,
+each action id once with every key, shadowed keys dropped; rows "label, keys, n of m" with labels
+`help.<id>` and key names `key.<name>` in the lang file; Enter closes and `input.press(row)` runs the
+handler on the next tick; the `help` layer is exclusive (`input.layer(name, active, {exclusive=true})`:
+swallows every unbound key and captures every vk from the game, so the game stands still under it).
 F5 repeats the focused item,
 F8 the focused item's tooltip (the game sets `BUTTONTOOLTIP` only on editor toolbar, quick-menu and
 object-palette buttons; play menus have none), F6 reloads, Ctrl+Shift+S mutes. In a grid menu the

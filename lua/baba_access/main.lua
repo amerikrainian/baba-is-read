@@ -35,6 +35,7 @@ local function load_modules(reloading)
 	mods.explore = require_fresh("baba_access.ui.explore")
 	mods.map = require_fresh("baba_access.ui.map")
 	mods.credits = require_fresh("baba_access.ui.credits")
+	mods.help = require_fresh("baba_access.ui.help")
 	return mods
 end
 
@@ -51,6 +52,7 @@ local function tick(extra)
 	mods.explore.tick()
 	mods.map.tick()
 	mods.credits.tick()
+	mods.help.tick()
 end
 
 local function bind_global_keys()
@@ -103,6 +105,7 @@ function M.start(reloading)
 	mods.map.attach(mods)
 	mods.credits.attach(mods)
 	bind_global_keys()
+	mods.help.attach(mods)   -- last: its layer sits on top of every other
 	hooks.on("always", "main.tick", tick)
 
 	_G.BabaAccess = setmetatable({ mods = mods, reload = M.reload, frame = function() return frame end }, {

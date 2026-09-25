@@ -7,7 +7,11 @@
 --
 -- Bindings live in layers. The topmost active layer that binds a key wins;
 -- a layer is a table {name=, active=function() -> bool, binds={}}; the "global"
--- layer is always active. A modal layer (explore mode later) sits above it.
+-- layer is always active. Layers stack in creation order, later on top. An
+-- exclusive layer (the key help) swallows every key it does not bind while it
+-- is active, and takes every key from the game as well, so the screen under
+-- it stands still. live() lists what would answer a key right now, for the
+-- help; press(row) runs a listed action as its key would.
 local log = require("baba_access.log")
 local hooks = require("baba_access.hooks")
 
@@ -17,6 +21,14 @@ local bridge = nil
 local capture_ready = false
 local layers = {}       -- ordered bottom to top
 local captured = {}     -- vk -> modifier mask the native side captures
+local next_seq = 0      -- binding order within a layer, for the help's row order
+
+-- The keys an exclusive layer takes from the game: every virtual key but the
+-- modifiers themselves (they carry no action of their own and the chords
+-- need them released normally) and the Windows keys.
+local EXCLUSIVE_SKIP = { [16] = true, [17] = true, [18] = true, [91] = true, [92] = true,
+	[160] = true, [161] = true, [162] = true, [163] = true, [164] = true, [165] = true }
+local ALL_MODS = 0xff   -- a bit per modifier combination
 
 local VK = {
 	backspace = 8, tab = 9, enter = 13, escape = 27, space = 32,
@@ -91,6 +103,11 @@ local function sync_capture()
 	for _, l in ipairs(layers) do
 		if l.active() then
 			for _, b in pairs(l.binds) do wanted[b.vk] = (wanted[b.vk] or 0) | (1 << b.mods) end
+			if l.exclusive then
+				for vk = 8, 222 do
+					if not EXCLUSIVE_SKIP[vk] then wanted[vk] = ALL_MODS end
+				end
+			end
 		end
 	end
 	for vk, mask in pairs(wanted) do
@@ -101,11 +118,13 @@ local function sync_capture()
 	end
 end
 
-function M.layer(name, active)
+-- layer(name, active, opts): opts.exclusive = true makes the layer swallow
+-- every key it does not bind while active.
+function M.layer(name, active, opts)
 	for _, l in ipairs(layers) do
 		if l.name == name then return l end
 	end
-	local l = { name = name, active = active or function() return true end, binds = {} }
+	local l = { name = name, active = active or function() return true end, binds = {}, exclusive = opts and opts.exclusive or false }
 	layers[#layers + 1] = l
 	return l
 end
@@ -117,8 +136,46 @@ function M.bind(layer_name, spec, id, handler, opts)
 	if not vk then log.error("input: %s", mods); return false end
 	local l = M.layer(layer_name)
 	local key = vk .. ":" .. mods
-	l.binds[key] = { id = id, spec = spec, handler = handler, vk = vk, mods = mods, opts = opts or {} }
+	next_seq = next_seq + 1
+	l.binds[key] = { id = id, spec = spec, handler = handler, vk = vk, mods = mods, opts = opts or {}, seq = next_seq }
 	return true
+end
+
+-- What would answer a key right now: the active layers from the top down,
+-- each key once (a lower layer's binding of a key a higher one takes is
+-- shadowed), grouped by action id within a layer in binding order:
+-- { { layer=, id=, specs = { "ctrl+right", ... }, handler=, opts= }, ... }.
+function M.live()
+	local out, taken = {}, {}
+	for i = #layers, 1, -1 do
+		local l = layers[i]
+		if l.active() then
+			local binds = {}
+			for key, b in pairs(l.binds) do
+				if not taken[key] then binds[#binds + 1] = { key = key, b = b } end
+				taken[key] = true
+			end
+			table.sort(binds, function(a, c) return a.b.seq < c.b.seq end)
+			local rows = {}
+			for _, e in ipairs(binds) do
+				local b = e.b
+				local row = rows[b.id]
+				if not row then
+					row = { layer = l.name, id = b.id, specs = {}, handler = b.handler, opts = b.opts, vk = b.vk, mods = b.mods }
+					rows[b.id] = row
+					out[#out + 1] = row
+				end
+				row.specs[#row.specs + 1] = b.spec
+			end
+			if l.exclusive then break end
+		end
+	end
+	return out
+end
+
+-- Runs a listed action as a press of its key would.
+function M.press(row)
+	hooks.guard("press " .. row.id, row.handler, { vk = row.vk, mods = row.mods, ["repeat"] = false })
 end
 
 function M.unbind_all()
@@ -142,6 +199,7 @@ local function dispatch(ev)
 				hooks.guard("key " .. b.spec .. " (" .. b.id .. ")", b.handler, { vk = vk, mods = mods, ["repeat"] = rep })
 				return
 			end
+			if l.exclusive then return end
 		end
 	end
 end

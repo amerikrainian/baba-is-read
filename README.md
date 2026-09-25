@@ -18,10 +18,11 @@ A screen-reader accessibility mod for Baba Is You (Steam, Windows). Speech goes 
 
 ## Keys
 
-The game's own keys are unchanged, except that inside a level the arrows belong to the exploration cursor and you move with WASD. The mod adds:
+Press F1 anywhere for the list of keys that work right there; Enter on a row does it. That list is always current, and the table below is the same information in one place. The game's own keys are unchanged, except that inside a level the arrows belong to the exploration cursor and you move with WASD. The mod adds:
 
 | Key | Action |
 |---|---|
+| F1 | Keys here: the keys that do something right where you are, most particular first, as "label, keys, n of m". Up and Down walk the rows, Enter does the row's action, Escape or F1 closes. Every other key is held while it is open |
 | F5 | Repeat the focused item |
 | F8 | Read the focused item's tooltip, where the game has one (editor buttons) |
 | Arrows | In a level: step the exploration cursor (WASD move you). On the map: the game's cursor |
