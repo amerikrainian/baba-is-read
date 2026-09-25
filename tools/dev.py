@@ -222,7 +222,7 @@ def main():
     l.add_argument("--grep")
     l.set_defaults(fn=cmd_log)
     k = sub.add_parser("key")
-    k.add_argument("keys", nargs="+", help="names like enter, down, f5, a; suffix :down or :up for half presses")
+    k.add_argument("keys", nargs="+", help="names like enter, down, f8, a; suffix :down or :up for half presses")
     k.add_argument("--delay", type=float, default=0.4)
     k.set_defaults(fn=cmd_key)
     sub.add_parser("keys").set_defaults(fn=cmd_keys)

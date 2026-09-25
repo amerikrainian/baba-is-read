@@ -176,7 +176,7 @@ function M.title(name)
 end
 
 -- The focus line: a virtual item's row label is spoken when the row is
--- entered (`always` forces it, for F5).
+-- entered (`always` forces it: Enter or Space on a virtual row).
 local function focus_line(state, always)
 	local text, key, value, label = M.describe(state, true)
 	if label and (always or not last or last.name ~= state.name or last.vrow ~= state.virtual.row) then
@@ -257,7 +257,6 @@ function M.attach(m)
 	overrides = require("baba_is_read.ui.menu_overrides")
 	last = nil
 	install_wrappers()
-	input.bind("global", "F5", "menu.repeat", function() M.announce_focus(true) end)
 	input.bind("global", "F8", "menu.details", function() M.details() end, { when = function() return M.tooltip() ~= "" end })
 end
 

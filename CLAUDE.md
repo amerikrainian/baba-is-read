@@ -213,9 +213,8 @@ vks, per screen (puzzle, map, grid menu, dialog, credits), keys the mod's active
 run by `bridge.post_key` (down now, up next tick; an OPTIONAL export, nil on an older DLL) or in a
 puzzle by the game's `command(name)`. A binding's `opts.when` says whether it does anything now: the
 help lists it only then, and the handler no-ops silently (no "no marker" style feedback; decided).
-F5 repeats the focused item,
 F8 the focused item's tooltip (the game sets `BUTTONTOOLTIP` only on editor toolbar, quick-menu and
-object-palette buttons; play menus have none), F6 reloads, Ctrl+Shift+S mutes. In a grid menu the
+object-palette buttons; play menus have none), F6 reloads. In a grid menu the
 arrows are ours (`menu_list` layer); in a dialog the arrows, Enter and Space (`dialog` layer). In a
 level (`level` and `explore` layers, `state.in_puzzle()`): the ARROWS are the exploration cursor
 (decided: always, no mode to toggle; the player moves with the game's WASD, which the mod never
@@ -282,7 +281,7 @@ are ours because the game draws most menus without a name.
 2. **(done)** Dev server and `tools/dev.py`.
 3. **(done)** Speech layer conventions.
 4. **(done)** Menus: announcer, list navigation for grids, sliders, toggles, radio kinds via
-   overrides, dialogs with a focus of ours and synthetic clicks, F5/F8. Open: text entry (`name`
+   overrides, dialogs with a focus of ours and synthetic clicks, F8. Open: text entry (`name`
    menu, `text_input_ok` hook), scrolling lists (`ALLOWSCROLL` menus such as the level list), the
    languages menu's radio state, whether "button" after every item stays (config `speak_roles`).
 5. **(done, first pass)** In-level core (`ui/level.lua`): level start from the `level_start` hook

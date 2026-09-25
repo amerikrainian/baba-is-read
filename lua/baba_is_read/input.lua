@@ -2,7 +2,7 @@
 --
 -- A bound key is captured at the window level before the game sees it, so
 -- bindings never fight the game's own controls. Keys are named like guildrun's
--- ("F5", "ctrl+r", "shift+F6"); names are not translated. Events arrive from
+-- ("F8", "ctrl+r", "shift+F6"); names are not translated. Events arrive from
 -- the bridge as packed integers and are drained once per frame by tick().
 --
 -- Bindings live in layers. The topmost active layer that binds a key wins;
@@ -94,7 +94,7 @@ end
 
 -- The capture set follows the active layers: a key is taken from the game only
 -- while some active layer binds it, and only with the modifiers a binding
--- names (a bit per modifier combination), so Ctrl+Shift+S leaves a plain S to
+-- names (a bit per modifier combination), so Ctrl+Shift+slash leaves a plain slash to
 -- the game, and a modal layer's arrows return to the game the moment the layer
 -- deactivates. sync_capture() runs once per frame.
 local function sync_capture()

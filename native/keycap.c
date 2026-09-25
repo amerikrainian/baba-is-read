@@ -24,7 +24,7 @@ int ba_iat_hook(const char *dll_name, const char *func_name, void *replacement, 
 static HWND g_hwnd;
 static WNDPROC g_orig_proc;
 // Per virtual key, a bit per modifier combination (1 << mods) that is captured,
-// so a chord like Ctrl+Shift+S takes S only while those modifiers are held and
+// so a chord like Ctrl+Shift+slash takes slash only while those modifiers are held and
 // a plain S still reaches the game.
 static unsigned char g_capture[256];
 static unsigned char g_synth[256];       // virtually held keys (dev server)

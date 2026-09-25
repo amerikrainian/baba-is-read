@@ -8,7 +8,6 @@ local log = require("baba_is_read.log")
 local M = {}
 
 local bridge = nil
-M.muted = false
 M.ready = false
 
 function M.attach(b)
@@ -52,8 +51,8 @@ end
 function M.speak(text, interrupt)
 	text = M.clean(text)
 	if text == "" then return false end
-	if M.muted or not bridge then
-		log.info("speech(muted)%s: %s", interrupt and "!" or "", text)
+	if not bridge then
+		log.info("speech(no bridge)%s: %s", interrupt and "!" or "", text)
 		return false
 	end
 	local ok, res = pcall(bridge.speak, text, interrupt and 1 or 0)

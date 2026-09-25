@@ -58,15 +58,8 @@ local function tick(extra)
 end
 
 local function bind_global_keys()
-	local input, speech, i18n = mods.input, mods.speech, mods.i18n
+	local input = mods.input
 	input.bind("global", "F6", "reload", function() M.reload() end)
-	input.bind("global", "ctrl+shift+s", "toggle_speech", function()
-		speech.muted = not speech.muted
-		local was = speech.muted
-		speech.muted = false
-		speech.speak(i18n.t(was and "app.speech_muted" or "app.speech_unmuted"), true)
-		speech.muted = was
-	end)
 end
 
 function M.start(reloading)

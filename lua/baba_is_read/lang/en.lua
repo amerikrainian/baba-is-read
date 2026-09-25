@@ -6,8 +6,6 @@ return {
 	["app.loaded"] = "Baba Is Read loaded",
 	["app.reloaded"] = "Baba Is Read reloaded",
 	["app.error"] = "Baba Is Read error: {0}",
-	["app.speech_muted"] = "speech muted",
-	["app.speech_unmuted"] = "speech on",
 
 	-- Roles
 	["role.button"] = "button",
@@ -123,10 +121,8 @@ return {
 	["help.menu.prev_row"] = "previous row",
 	["help.menu.virtual_enter"] = "repeat this item",
 	["help.menu.virtual_space"] = "repeat this item",
-	["help.menu.repeat"] = "repeat the focused item",
 	["help.menu.details"] = "the focused item's tooltip",
 	["help.reload"] = "reload the mod",
-	["help.toggle_speech"] = "mute or unmute speech",
 	["help.level.rules"] = "the rules",
 	["help.level.where"] = "where you are",
 	["help.level.coords"] = "your coordinates",
@@ -186,7 +182,7 @@ return {
 	["help.game.menu.back"] = "back",
 	["help.game.dialog.back"] = "back",
 	["help.game.credits.leave"] = "leave the credits",
-	-- Key names for the help ("Ctrl+Shift+S" from the mod's specs)
+	-- Key names for the help ("Ctrl+Shift+slash" from the mod's specs)
 	["key.ctrl"] = "Ctrl",
 	["key.shift"] = "Shift",
 	["key.alt"] = "Alt",
