@@ -12,7 +12,7 @@
 -- (navigate, activate, back), a dialog (back), the credits (leave).
 --
 -- A row's action posts the key to the game through the bridge (down now, up
--- on the next tick) so it is indistinguishable from a press; in a puzzle,
+-- three ticks later, held long enough for the engine to see it pressed) so it is indistinguishable from a press; in a puzzle,
 -- without that export (an older DLL), the game's own command(name) is the
 -- fallback for what it handles: the moves, wait and restart. Undo and pause
 -- are the engine's, so those rows wait for the export.
@@ -101,7 +101,7 @@ local function context()
 	return nil
 end
 
-local release = nil   -- vk to release on the next tick
+local release = nil   -- { vk=, ticks= }: the key to release, and when
 
 local COMMANDABLE = { right = true, left = true, up = true, down = true, idle = true, restart = true }
 
@@ -113,7 +113,7 @@ end
 local function press(vk, action, ctx)
 	if bridge and bridge.post_key then
 		bridge.post_key(vk, 1)
-		release = vk
+		release = { vk = vk, ticks = 3 }
 	elseif runnable(action, ctx) then
 		-- The game's own entry point for a level key, by the action's name.
 		command(action)
@@ -124,8 +124,11 @@ end
 
 function M.tick()
 	if release and bridge and bridge.post_key then
-		bridge.post_key(release, 0)
-		release = nil
+		release.ticks = release.ticks - 1
+		if release.ticks <= 0 then
+			bridge.post_key(release.vk, 0)
+			release = nil
+		end
 	end
 end
 

@@ -19,7 +19,7 @@ local speech, i18n, input, config, log, game_keys
 local open = false
 local rows = {}
 local index = 1
-local pending = nil   -- a row to run once the help has closed
+local pending = nil   -- { row=, ticks= }: a row to run once the help has closed
 
 local function key_name(spec)
 	local parts = {}
@@ -85,11 +85,13 @@ local function jump(i)
 	say_row()
 end
 
--- Enter: the help closes now; the action runs on the next tick, when the
--- layer it belongs to is the one answering keys again.
+-- Enter: the help closes now; the action runs two ticks later, after the
+-- capture set has followed the layers (the help's exclusive capture would
+-- otherwise swallow a posted game key) and the action's own layer answers
+-- keys again.
 local function perform()
 	if #rows == 0 then M.close(); return end
-	pending = rows[index]
+	pending = { row = rows[index], ticks = 2 }
 	M.close()
 end
 
@@ -97,9 +99,12 @@ function M.active() return open end
 
 function M.tick()
 	if pending and not open then
-		local row = pending
-		pending = nil
-		input.press(row)
+		pending.ticks = pending.ticks - 1
+		if pending.ticks <= 0 then
+			local row = pending.row
+			pending = nil
+			input.press(row)
+		end
 	end
 end
 
