@@ -302,7 +302,9 @@ are ours because the game draws most menus without a name.
 6. **(done, first pass)** Level map (`ui/map.lua`): entry line with open/locked/completed counts,
    every cursor tile spoken (level and status, or the directions that continue), the level list
    with reachable-first ordering and the engine-placed jump, period/comma reading cursor with categories;
-   level numbers (`getlevelid`, numbered styles only), bonus marks (save `<world>_bonus`, unverified),
+   level numbers (`getlevelid`, numbered styles only), **locked icons named by their id alone**
+   (`locked_label`: the custom id is the area's icon word, "Mountain"; the level name is what the
+   game shows only when the cursor can stand there, `COMPLETED > 1`, so speaking it early leaks), bonus marks (save `<world>_bonus`, unverified),
    gates (`paths` with `PATH_GATE` > 0 whose path has appeared: `PATH_TARGET` is the spawned lock
    object, `COMPLETED` 1 closed), control hints (`[specials]` `controls,<key>` read from the level
    file, worded with the game's `idle`/`move`/direction strings), progress (save `<world>_prize/

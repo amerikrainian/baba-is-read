@@ -84,6 +84,7 @@ return {
 	["map.entry"] = "map. {0} open, {1} locked, {2} completed",
 	["map.open"] = "open",
 	["map.locked"] = "locked",
+	["map.locked_level"] = "locked level",  -- a locked icon with no id to show
 	["map.completed"] = "completed",
 	["map.unreachable"] = "no path",
 	["map.no_levels"] = "no levels",

@@ -74,6 +74,9 @@ function M.passable(x, y, cursor)
 end
 
 -- Visible level icons, as { unit=, name=, file=, x=, y=, status= } in reading order.
+-- A locked icon (COMPLETED 1) is named by what its icon shows, never by its
+-- level name: the game shows that name only once the cursor can stand on the
+-- icon, which needs COMPLETED > 1, so a sighted player does not have it yet.
 function M.levels()
 	local out = {}
 	for _, u in ipairs(units or {}) do
@@ -81,7 +84,7 @@ function M.levels()
 		if file ~= "" and u.visible and u.flags[DEAD] == false then
 			local done = u.values[COMPLETED] or 0
 			if done >= 1 then
-				out[#out + 1] = { unit = u, name = M.level_label(u), file = file,
+				out[#out + 1] = { unit = u, name = done >= 2 and M.level_label(u) or M.locked_label(u), file = file,
 					x = u.values[XPOS], y = u.values[YPOS], done = done, bonus = M.level_bonus(file) }
 			end
 		end
@@ -93,16 +96,30 @@ function M.levels()
 	return out
 end
 
+-- The game's id for an icon: the number, letter or "Extra n" it draws, or the
+-- custom id of an area (the word for its picture: "Mountain", "Island").
+function M.level_id(u)
+	local style = u.values[VISUALSTYLE] or -1
+	if type(getlevelid) ~= "function" then return "" end
+	local ok, id = pcall(getlevelid, u.values[VISUALLEVEL], style, u.strings[U_LEVELFILE])
+	return ok and speech.clean(tostring(id or "")) or ""
+end
+
+-- What a locked icon gives away: its id alone, or "locked level" without one.
+function M.locked_label(u)
+	local id = M.level_id(u)
+	if id ~= "" then return id end
+	return i18n.t("map.locked_level")
+end
+
 -- The icon's name with the number the game draws on it: "2. where do i go?".
 -- Numbered, lettered and "Extra n" styles only; a custom id (the areas, whose
 -- names already start with their number) and an id equal to the name ("?",
 -- the "Map" exit icon of an area, named "map") are left alone.
 function M.level_label(u)
 	local name = speech.clean(u.strings[U_LEVELNAME] or "")
-	local style = u.values[VISUALSTYLE] or -1
-	if style < 0 or type(getlevelid) ~= "function" then return name end
-	local ok, id = pcall(getlevelid, u.values[VISUALLEVEL], style, u.strings[U_LEVELFILE])
-	id = ok and speech.clean(tostring(id or "")) or ""
+	if (u.values[VISUALSTYLE] or -1) < 0 then return name end
+	local id = M.level_id(u)
 	if id == "" or id:lower() == name:lower() or name:lower():sub(1, #id + 1) == id:lower() .. "." then return name end
 	return i18n.t("map.level_label", id, name)
 end

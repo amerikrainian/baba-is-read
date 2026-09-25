@@ -21,7 +21,7 @@ Press F1 anywhere for the list of keys that work right there; Enter on a row doe
 | C | Your coordinates alone: column, row (the map cursor on the map) |
 | T, H, L | In a level: the rules, where you are, the object counts |
 | F | In a level: the facing of what is on the cursor's tile ("baba, right"), for objects whose sprite shows it |
-| L, H | On the map: the level list (Up, Down, Enter, Escape), the progress counters |
+| L, H | On the map: the level list (Up, Down, Enter, Escape; a locked level is named by what its icon shows, such as "Mountain" or a number, since the game reveals its name only once it opens), the progress counters |
 
 ## Install
 
