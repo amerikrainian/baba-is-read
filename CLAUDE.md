@@ -265,5 +265,8 @@ are ours because the game draws most menus without a name.
 7. **(done, first pass)** Exploration cursor (`ui/explore.lua`): the arrows in every level, parked
    on the player at level start. Open: distance and direction from the player in readouts, jump by
    object kind, a "what is around me" summary.
-8. Polish and release: settings in the game's settings menu, README key list, release zip; restore
+8. **(done)** Credits (`ui/credits.lua`): the engine screen (`editor.strings[MENU] == "credits"`, no
+   `menufuncs` entry, `INMENU` 0) feeds each line through the Lua `creditstext(text, id)`; a wrapper
+   speaks it on arrival, `#key` tokens expanded with the game's `langtext` as `writetext` does.
+9. Polish and release: settings in the game's settings menu, README key list, release zip; restore
    `fullscreen=1` in the user's settings after a dev session (it is set to 0 for the clicks).
