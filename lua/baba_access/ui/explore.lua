@@ -7,7 +7,10 @@
 -- current category in reading order from the cursor, wrapping around (a
 -- parsed rule is one entry, landing on its first word); [ and ] switch the
 -- category (objects, rules, markers, all; see CATEGORIES below), skipping
--- any category with nothing in it. Ctrl+arrows skip a run of identical
+-- any category with nothing in it. Within a category, Shift+period and
+-- Shift+comma cycle the kind: "all kinds", then every distinct name present
+-- (skull, rock, flag, ...), and period/comma then jump among that kind only;
+-- a category switch resets the kind. Ctrl+arrows skip a run of identical
 -- tiles: the cursor lands on the first tile in that direction whose contents
 -- differ from the tile it stands on, or on the last tile of the run when the
 -- run reaches the edge. Home returns the cursor to the player.
@@ -24,6 +27,7 @@ local speech, i18n, input, state, log
 local cx, cy = 0, 0
 local jump_index = 0
 local category = 1       -- index into CATEGORIES
+local kind = nil         -- an entry label to restrict period/comma to, or nil for all
 local parked_for = nil   -- level identity the cursor was last parked for
 local last_you = nil     -- "x,y" of the player last seen, to follow moves
 local markers = {}       -- level key -> { list = { {x=, y=, n=}, ... }, next = n }
@@ -137,8 +141,27 @@ local function entries_for(cat)
 	return out
 end
 
+-- The distinct labels in the current category, alphabetically, with counts.
+local function kinds_now()
+	local counts, names = {}, {}
+	for _, e in ipairs(entries_for(CATEGORIES[category])) do
+		if not counts[e.label] then counts[e.label] = 0; names[#names + 1] = e.label end
+		counts[e.label] = counts[e.label] + 1
+	end
+	table.sort(names)
+	return names, counts
+end
+
+-- The entries period and comma move over: the category's, or those of the
+-- chosen kind.
 local function entries_now()
-	return entries_for(CATEGORIES[category])
+	local all = entries_for(CATEGORIES[category])
+	if not kind then return all end
+	local out = {}
+	for _, e in ipairs(all) do
+		if e.label == kind then out[#out + 1] = e end
+	end
+	return out
 end
 
 local function jump(delta)
@@ -169,12 +192,37 @@ local function switch_category(delta)
 		local count = #entries_for(CATEGORIES[i])
 		if count > 0 then
 			category = i
+			kind = nil
 			jump_index = 0
 			speech.speak(i18n.t("cat.switched", i18n.t("cat." .. CATEGORIES[i]), count), true)
 			return
 		end
 	end
 	speech.speak(i18n.t("level.no_objects"), true)
+end
+
+-- Shift+period / Shift+comma: the next or previous kind within the category,
+-- "all kinds" first in the cycle. Announces the kind and its count; the
+-- cursor stays.
+local function switch_kind(delta)
+	local names, counts = kinds_now()
+	if #names == 0 then speech.speak(i18n.t("level.no_objects"), true); return end
+	local n = #names + 1   -- slot 1 is "all kinds"
+	local i = 1
+	if kind then
+		for j, name in ipairs(names) do
+			if name == kind then i = j + 1; break end
+		end
+	end
+	i = ((i - 1 + delta) % n) + 1
+	jump_index = 0
+	if i == 1 then
+		kind = nil
+		speech.speak(i18n.t("cat.switched", i18n.t("kind.all"), #entries_for(CATEGORIES[category])), true)
+	else
+		kind = names[i - 1]
+		speech.speak(i18n.t("cat.switched", kind, counts[kind]), true)
+	end
 end
 
 -- Slash: a marker on the cursor's tile, numbered after the level's last.
@@ -248,6 +296,8 @@ function M.attach(m)
 	input.bind("explore", "ctrl+down", "explore.skip_down", function() skip(0, 1) end, rep)
 	input.bind("explore", "period", "explore.next", function() jump(1) end, rep)
 	input.bind("explore", "comma", "explore.prev", function() jump(-1) end, rep)
+	input.bind("explore", "shift+period", "explore.next_kind", function() switch_kind(1) end, rep)
+	input.bind("explore", "shift+comma", "explore.prev_kind", function() switch_kind(-1) end, rep)
 	input.bind("explore", "rightbracket", "explore.next_category", function() switch_category(1) end)
 	input.bind("explore", "leftbracket", "explore.prev_category", function() switch_category(-1) end)
 	input.bind("explore", "home", "explore.home", function() park_on_player(); say_tile() end)

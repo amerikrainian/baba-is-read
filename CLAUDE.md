@@ -186,7 +186,8 @@ captures), Ctrl+arrows skip a run of tiles that read the same as the cursor's an
 that reads differently (or the run's last tile at the edge), period/comma jump to the next/previous entry in reading order from the cursor, wrapping,
 within a category that [ and ] cycle, skipping empty ones (`level_state.CATEGORIES`: objects =
 non-text, non-terrain (`TILING ~= 1`, so no walls, water, hedges), not the player; rules = parsed
-rules plus loose text; all; plus explore's own markers), slash places "marker n" on the cursor's
+rules plus loose text; all; plus explore's own markers; Shift+period/comma cycle a kind within the
+category, one distinct label or all, and period/comma then move within it), slash places "marker n" on the cursor's
 tile (per level, in memory for the session; Shift+slash clears the tile's, Ctrl+Shift+slash all;
 a marker is read as tile contents and stops the skip), Home parks the cursor on the player, C the player's coordinates alone, T the rules, H where you are, L the object counts. On the
 world map (`map` layer, `state.is_map()`): the arrows are the GAME's and walk its cursor, every tile
