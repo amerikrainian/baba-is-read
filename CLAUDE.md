@@ -248,8 +248,10 @@ are ours because the game draws most menus without a name.
    snapshot diff for movement, wrappers on `dopush` for push/pull, `checkeffecthistory` + `delete`
    for destruction and its cause, `addundo` for convert/create/bonus, `destroylevel`, `MF_end`,
    `MF_allisdone`, `handlespecial` for signs; the `movement_take` hook for shift/fear), `turn_auto`
-   turns, `you2`, level number and subtitle. Live-tested: push, undo, the start line. Untested:
-   destruction, conversion, creation, bonus, auto turns, signs, the ending. Open: the map (see 6).
+   turns, `you2`, level number and subtitle. Live-tested (scenes built with the game's `create` through the eval channel, then real keys):
+   push, push then sink, sink, defeat, "flag 55 became baba", make, teleport, melt, undo, restart,
+   the start line. Untested: bonus (writes the save), auto turns (the word must be in the level's
+   palette, `unitreference`; `create` of an unknown name yields an "error" object), signs, the ending. Open: the map (see 6).
 6. **(done, first pass)** Level map (`ui/map.lua`): entry line with open/locked/completed counts,
    every cursor tile spoken (level and status, or the directions that continue), the level list
    with reachable-first ordering and the engine-placed jump, period/comma reading cursor with categories. Open: the HUD
