@@ -193,7 +193,9 @@ Space stays the game's outside dialogs.
 **Announcements are terse**: the shape of the line carries the meaning. A move is "col, row[,
 contents]", never "moved to"; a blocked move "blocked, wall"; a rule change "new: rock is win" /
 "gone: wall is stop"; the level start "<name>. <rules>. <you>, col, row". Positions are the game's
-own grid, column first then row (chess order, A1 not 1A), counted from the room's top-left. Objects with no active rule (floor tiles,
+own grid, column first then row (chess order, A1 not 1A). The room (`roomsizex` x `roomsizey`) has a
+one-tile border ring no object stands on (the game's `inbounds(x, y, 1)`), so the playable top-left
+tile is 1, 1 and the cursors stop at `level_state.in_bounds`. Objects with no active rule (floor tiles,
 decoration) are left out of tile readouts (`speak_inert`), never out of the census (L).
 
 ## Languages (`i18n.lua`, `lang/`; the guildrun pattern)

@@ -39,7 +39,7 @@ end
 
 local function step(dx, dy)
 	local nx, ny = cx + dx, cy + dy
-	if nx < 0 or ny < 0 or nx >= state.width() or ny >= state.height() then
+	if not state.in_bounds(nx, ny) then
 		speech.speak(i18n.t("level.edge"), true)
 		return
 	end
@@ -53,13 +53,12 @@ end
 -- wall, an object, ...). A run that reaches the edge stops on its last tile;
 -- a cursor already at the edge says so.
 local function skip(dx, dy)
-	local w, h = state.width(), state.height()
 	local here = state.describe_tile(cx, cy, nil)
 	local x, y = cx, cy
 	local moved = false
 	while true do
 		local nx, ny = x + dx, y + dy
-		if nx < 0 or ny < 0 or nx >= w or ny >= h then break end
+		if not state.in_bounds(nx, ny) then break end
 		x, y = nx, ny
 		moved = true
 		if state.describe_tile(x, y, nil) ~= here then break end

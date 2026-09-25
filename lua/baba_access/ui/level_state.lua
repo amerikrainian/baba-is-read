@@ -40,6 +40,14 @@ end
 function M.width() return roomsizex or 0 end
 function M.height() return roomsizey or 0 end
 
+-- The playable tiles. The room is one tile larger on every side than the
+-- level: column 0, row 0, the last column and the last row are a border ring
+-- no object stands on (the game's own inbounds(x, y, 1) and getemptytiles
+-- count from 1 to size - 2), so the playable top-left tile is 1, 1.
+function M.in_bounds(x, y)
+	return x >= 1 and y >= 1 and x <= M.width() - 2 and y <= M.height() - 2
+end
+
 -- Spoken name of a unit: "rock", or "baba text" for the word BABA.
 function M.name_of(unit)
 	local name = tostring(unit.strings[UNITNAME] or "")

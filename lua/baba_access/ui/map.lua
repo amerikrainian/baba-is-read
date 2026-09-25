@@ -44,7 +44,7 @@ end
 
 -- True when the engine would let the cursor step onto the tile.
 function M.passable(x, y, cursor)
-	if x < 0 or y < 0 or x >= state.width() or y >= state.height() then return false end
+	if not state.in_bounds(x, y) then return false end
 	local ok, here = pcall(findallhere, x, y, cursor and cursor.fixed or 0, true)
 	if not ok then return false end
 	for _, id in ipairs(here) do
