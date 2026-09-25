@@ -151,7 +151,11 @@ hooks, and rules from the `features` tables.
 - `lua/baba_access/ui/`: `menu.lua` (`current()`, `describe(state)`, `static_text`, `title`, `tick`,
   `details`, `dump`), `menu_nav.lua` (`applies`, `active`, `items`, `index`),
   `menu_overrides.lua` (per menu: `items[id] = {kind = toggle|radio|slider|button, label = <game
-  lang key>}`, `default_kind`, `list`, `hidden_text`). A new screen is a module with `attach(mods)`
+  lang key>}`, `default_kind`, `list`, `hidden_text`). `level.lua` composes the turn line, `events.lua` (attached
+  before it) records what happened to other objects between `events.begin()` at a command or auto
+  turn and `events.lines()` at `turn_end`; a `hooks.wrap` wrapper is replaced, not stacked, by a second
+  wrap of the same name, and its fallback re-runs the original on error, so wrappers record BEFORE
+  calling the original (or guard the after-part with their own pcall). A new screen is a module with `attach(mods)`
   and optional `tick(frame)`, registered in `main.load_modules` and ticked from `main.tick`.
 
 ## Dev driver (`native/devserver.c`; on by default, `config dev_enabled`, port `dev_port` = 8772)
@@ -240,8 +244,12 @@ are ours because the game draws most menus without a name.
 5. **(done, first pass)** In-level core (`ui/level.lua`): level start from the `level_start` hook
    (it fires; the level identity `WORLD/CURRLEVEL` is the fallback), the player snapshot on
    `command_given` against `turn_end` for moved/blocked/wait, rule diffs on `rule_update_after`
-   flushed ahead of the turn line, `undoed_after`, `level_win`. Open: what was pushed, deaths and
-   transformations named, multiple `you` objects, "Level Is Auto" turns, the map (see 6).
+   flushed ahead of the turn line, `undoed_after`, `level_win`. Turn events (`ui/events.lua`): every other object's fate from the game's own records (a
+   snapshot diff for movement, wrappers on `dopush` for push/pull, `checkeffecthistory` + `delete`
+   for destruction and its cause, `addundo` for convert/create/bonus, `destroylevel`, `MF_end`,
+   `MF_allisdone`, `handlespecial` for signs; the `movement_take` hook for shift/fear), `turn_auto`
+   turns, `you2`, level number and subtitle. Live-tested: push, undo, the start line. Untested:
+   destruction, conversion, creation, bonus, auto turns, signs, the ending. Open: the map (see 6).
 6. **(done, first pass)** Level map (`ui/map.lua`): entry line with open/locked/completed counts,
    every cursor tile spoken (level and status, or the directions that continue), the level list
    with reachable-first ordering and the engine-placed jump, period/comma reading cursor with categories. Open: the HUD

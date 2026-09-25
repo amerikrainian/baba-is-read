@@ -1,10 +1,14 @@
 -- Level announcer: what happens in a level, from the game's own hooks.
 --
---   level start     -> "<level name>. <rules>. <you>, col, row"
+--   level start     -> "<number>, <level name>. <subtitle>. <rules>. <you>, col, row"
 --   a move          -> "col, row[, what is on the tile]"      (the player moved)
 --                      "blocked[, what is ahead]"             (the player did not)
 --                      "wait"                                  (a passed turn)
+--   an auto turn    -> the position line only if the player moved ("level is auto")
 --   rules changed   -> "new: rock is win" / "gone: wall is stop", ahead of the turn line
+--   other objects   -> "pushed rock", "sank rock, water", "rock became baba", ... (events.lua),
+--                      between the rule changes and the turn line
+--   sign text       -> the sign's lines when you step next to it
 --   win / undo      -> "win" / "undo, col, row"
 --   no you left     -> "no you"
 --
@@ -13,7 +17,7 @@
 -- object counts; explore mode lives in explore.lua.
 local M = {}
 
-local mods, speech, i18n, hooks, input, config, log, state
+local mods, speech, i18n, hooks, input, config, log, state, events
 
 local pending = {}        -- lines to flush ahead of the next turn line
 local before = nil        -- { key = <command>, you = { [fixed] = {x, y, name} } } from command_given
@@ -81,13 +85,28 @@ local function where_line(with_name, prev)
 	return table.concat(parts, ", ")
 end
 
+-- "Level 2, now what is this?" then the subtitle the level card shows.
+local function name_lines()
+	local out = {}
+	local name = speech.clean(generaldata and generaldata.strings[LEVELNAME] or "")
+	local number = speech.clean(generaldata and generaldata.strings[LEVELNUMBER_NAME] or "")
+	if number ~= "" and name ~= "" then out[#out + 1] = i18n.t("level.start_name", number, name)
+	elseif name ~= "" then out[#out + 1] = name
+	elseif number ~= "" then out[#out + 1] = number end
+	if type(MF_read) == "function" then
+		local ok, sub = pcall(MF_read, "level", "general", "subtitle")
+		sub = ok and speech.clean(tostring(sub or "")) or ""
+		if sub ~= "" then out[#out + 1] = sub end
+	end
+	return out
+end
+
 function M.announce_level()
-	local lines = {}
-	local name = generaldata and generaldata.strings[LEVELNAME] or ""
-	if name ~= "" then lines[#lines + 1] = speech.clean(name) end
+	local lines = name_lines()
 	local rules = state.rules()
 	if #rules > 0 then lines[#lines + 1] = table.concat(rules, ", ") end
 	lines[#lines + 1] = where_line(true)
+	for _, l in ipairs(events.sign_lines()) do lines[#lines + 1] = l end
 	pending = {}
 	known_rules = rules_set()
 	speech.speak(table.concat(lines, ". "), true)
@@ -95,29 +114,52 @@ end
 
 
 local function on_command(extra)
+	if not state.in_puzzle() then return end
 	before = { key = extra and extra[1], you = you_snapshot() }
+	events.begin()
+end
+
+-- "level is auto": the level takes a turn on its own.
+local function on_auto()
+	if not state.in_puzzle() then return end
+	before = { auto = true, you = you_snapshot() }
+	events.begin()
 end
 
 local function on_turn_end(extra)
 	if not state.in_puzzle() then return end
 	local key = before and before.key
+	local auto = before and before.auto
 	local snap = before and before.you or {}
 	before = nil
+	for _, l in ipairs(events.lines()) do pending[#pending + 1] = l end
 	local you = state.you_units()
 	if #you == 0 then flush(i18n.t("level.no_you"), true); return end
 	local u = you[1]
 	local prev = snap[u.fixed]
-	local dir = keys and key and keys[key]
-	if dir == nil or dir > 4 then flush(nil, true); return end
-	if dir == 4 then flush(i18n.t("level.wait"), true); return end
 	local moved = not prev or prev.x ~= u.values[XPOS] or prev.y ~= u.values[YPOS]
-	if moved then
-		flush(where_line(false, prev), true)
+	local line = nil
+	local dir = keys and key and keys[key]
+	if auto then
+		if moved then line = where_line(false, prev) end
+	elseif dir == nil or dir > 4 then
+		line = nil
+	elseif dir == 4 then
+		line = i18n.t("level.wait")
+	elseif moved then
+		line = where_line(false, prev)
 	else
 		local d = ndirs[dir + 1]
 		local ahead = state.describe_tile(u.values[XPOS] + d[1], u.values[YPOS] + d[2], u)
-		flush(ahead ~= "" and i18n.t("level.blocked_by", ahead) or i18n.t("level.blocked"), true)
+		line = ahead ~= "" and i18n.t("level.blocked_by", ahead) or i18n.t("level.blocked")
 	end
+	local signs = events.sign_lines()
+	if #signs > 0 then
+		local parts = { line }
+		for _, s in ipairs(signs) do parts[#parts + 1] = s end
+		line = table.concat(parts, ". ")
+	end
+	flush(line, true)
 end
 
 -- The undo hook fires before the game re-parses the rules, so the line waits
@@ -172,12 +214,13 @@ end
 
 function M.attach(m)
 	mods = m
-	speech, i18n, hooks, input, config, log, state = m.speech, m.i18n, m.hooks, m.input, m.config, m.log, m.level_state
+	speech, i18n, hooks, input, config, log, state, events = m.speech, m.i18n, m.hooks, m.input, m.config, m.log, m.level_state, m.events
 	pending, before, known_rules, announce_start, undo_delay = {}, nil, nil, false, nil
 	if state.in_puzzle() then known_rules = rules_set() end
 
 	hooks.on("level_start", "level.start", function() announce_start = true end)
 	hooks.on("command_given", "level.command", on_command)
+	hooks.on("turn_auto", "level.auto", on_auto)
 	hooks.on("turn_end", "level.turn", on_turn_end)
 	hooks.on("undoed_after", "level.undo", on_undo)
 	hooks.on("level_win", "level.win", function() if state.in_puzzle() then pending = {}; speech.speak(i18n.t("level.win"), true) end end)

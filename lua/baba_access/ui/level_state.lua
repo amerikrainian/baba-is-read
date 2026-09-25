@@ -114,11 +114,18 @@ function M.pos_text(x, y)
 	return i18n.t("level.pos", x, y)
 end
 
--- The units the player controls (rule "... is you"), first the primary one.
+-- The units the player controls (rule "... is you", then "... is you2", the
+-- second control set), first the primary one.
 function M.you_units()
 	if type(getunitswitheffect) ~= "function" then return {} end
 	local ok, list = pcall(getunitswitheffect, "you", true)
-	if not ok or type(list) ~= "table" then return {} end
+	if not ok or type(list) ~= "table" then list = {} end
+	if type(featureindex) == "table" and featureindex["you2"] ~= nil then
+		local ok2, list2 = pcall(getunitswitheffect, "you2", true)
+		if ok2 and type(list2) == "table" then
+			for _, u in ipairs(list2) do list[#list + 1] = u end
+		end
+	end
 	return list
 end
 
