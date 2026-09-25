@@ -17,8 +17,9 @@ local mods, speech, i18n, hooks, input, config, log, state
 
 local pending = {}        -- lines to flush ahead of the next turn line
 local before = nil        -- { key = <command>, you = { [fixed] = {x, y, name} } } from command_given
-local known_rules = nil   -- set of rule strings after the last announcement
+local known_rules = nil   -- set of rule strings at the last announcement
 local announce_start = false
+local undo_delay = nil    -- frames to wait before speaking an undo (rules re-parse after the hook)
 
 local function you_snapshot()
 	local snap = {}
@@ -34,8 +35,28 @@ local function rules_set()
 	return set
 end
 
+-- Rule changes since the last announcement, as lines. The game re-parses
+-- rules several times per turn, so the diff is taken once, here, against the
+-- set spoken last: a rule that breaks and re-forms within a turn is no change.
+local function rule_changes()
+	local out = {}
+	if not known_rules then return out end
+	local now = rules_set()
+	for r in pairs(now) do
+		if not known_rules[r] then out[#out + 1] = i18n.t("level.rule_added", r) end
+	end
+	for r in pairs(known_rules) do
+		if not now[r] then out[#out + 1] = i18n.t("level.rule_removed", r) end
+	end
+	known_rules = now
+	return out
+end
+
 local function flush(line, interrupt)
 	local parts = {}
+	if state.in_puzzle() then
+		for _, p in ipairs(rule_changes()) do parts[#parts + 1] = p end
+	end
 	for _, p in ipairs(pending) do parts[#parts + 1] = p end
 	pending = {}
 	if line and line ~= "" then parts[#parts + 1] = line end
@@ -72,17 +93,6 @@ function M.announce_level()
 	speech.speak(table.concat(lines, ". "), true)
 end
 
-local function on_rules_updated()
-	if not known_rules or not state.in_puzzle() then return end
-	local now = rules_set()
-	for r in pairs(now) do
-		if not known_rules[r] then pending[#pending + 1] = i18n.t("level.rule_added", r) end
-	end
-	for r in pairs(known_rules) do
-		if not now[r] then pending[#pending + 1] = i18n.t("level.rule_removed", r) end
-	end
-	known_rules = now
-end
 
 local function on_command(extra)
 	before = { key = extra and extra[1], you = you_snapshot() }
@@ -110,16 +120,24 @@ local function on_turn_end(extra)
 	end
 end
 
+-- The undo hook fires before the game re-parses the rules, so the line waits
+-- two frames for who is "you" to be right again.
 local function on_undo()
 	if not state.in_puzzle() then return end
-	on_rules_updated()
-	flush(i18n.t("level.undo_at", where_line(false)), true)
+	undo_delay = 2
 end
 
 -- A level is announced only when the game's level_start hook has fired; the
 -- data is already the new level's at that point. Menus opening and closing
 -- over a level, and the transition frames, never re-announce it.
 function M.tick()
+	if undo_delay then
+		undo_delay = undo_delay - 1
+		if undo_delay <= 0 then
+			undo_delay = nil
+			if state.in_puzzle() then flush(i18n.t("level.undo_at", where_line(false)), true) end
+		end
+	end
 	if not announce_start or not state.level_loaded() then return end
 	announce_start = false
 	if state.is_map() then return end -- the map module announces maps
@@ -147,13 +165,12 @@ end
 function M.attach(m)
 	mods = m
 	speech, i18n, hooks, input, config, log, state = m.speech, m.i18n, m.hooks, m.input, m.config, m.log, m.level_state
-	pending, before, known_rules, announce_start = {}, nil, nil, false
+	pending, before, known_rules, announce_start, undo_delay = {}, nil, nil, false, nil
 	if state.in_puzzle() then known_rules = rules_set() end
 
 	hooks.on("level_start", "level.start", function() announce_start = true end)
 	hooks.on("command_given", "level.command", on_command)
 	hooks.on("turn_end", "level.turn", on_turn_end)
-	hooks.on("rule_update_after", "level.rules", on_rules_updated)
 	hooks.on("undoed_after", "level.undo", on_undo)
 	hooks.on("level_win", "level.win", function() if state.in_puzzle() then pending = {}; speech.speak(i18n.t("level.win"), true) end end)
 
