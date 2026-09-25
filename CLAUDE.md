@@ -251,7 +251,11 @@ are ours because the game draws most menus without a name.
    turns, `you2`, level number and subtitle. Live-tested (scenes built with the game's `create` through the eval channel, then real keys):
    push, push then sink, sink, defeat, "flag 55 became baba", make, teleport, melt, undo, restart,
    the start line. Untested: bonus (writes the save), auto turns (the word must be in the level's
-   palette, `unitreference`; `create` of an unknown name yields an "error" object), signs, the ending. Open: the map (see 6).
+   palette, `unitreference`; `create` of an unknown name yields an "error" object), the ending. Signs
+   were verified with a spawned special (`MF_create("specialobject")`, `handlespecial(id, "sign",
+   {...})`): the text lands on the objects standing on the special's tile. The main world has no
+   in-level signs at all; the 70 `sign_lang` specials are the Museum's developer commentary, and the
+   main map's specials are `controls` hints (not yet spoken). Open: the map (see 6).
 6. **(done, first pass)** Level map (`ui/map.lua`): entry line with open/locked/completed counts,
    every cursor tile spoken (level and status, or the directions that continue), the level list
    with reachable-first ordering and the engine-placed jump, period/comma reading cursor with categories. Open: the HUD

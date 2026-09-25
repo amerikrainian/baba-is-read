@@ -240,16 +240,22 @@ local function install()
 		speech.speak(i18n.t("level.all_done"), false)
 		return orig(...)
 	end)
-	-- Signs get their text inside handlespecial, so it is read after the call,
-	-- guarded so the game function is never run twice.
+	-- handlespecial writes a sign's text onto the objects standing on the
+	-- special's tile (not onto the special), so the tile is read after the
+	-- call, guarded so the game function is never run twice.
 	hooks.wrap("handlespecial", function(orig, unitid, type_, ...)
 		local results = table.pack(orig(unitid, type_, ...))
 		if type_ == "sign" or type_ == "sign_lang" then
 			pcall(function()
 				local u = mmf.newObject(unitid)
-				local text = u and u.strings and u.strings[UNITSIGNTEXT] or ""
-				if text ~= "" then
-					signs[#signs + 1] = { id = unitid, x = u.values[XPOS], y = u.values[YPOS], text = text, level = level_key() }
+				local x, y = u.values[XPOS], u.values[YPOS]
+				for _, id in ipairs(findallhere(x, y)) do
+					local v = mmf.newObject(id)
+					local text = v and v.strings and v.strings[UNITSIGNTEXT] or ""
+					if text ~= "" then
+						signs[#signs + 1] = { id = id, x = x, y = y, text = text, level = level_key() }
+						break
+					end
 				end
 			end)
 		end
