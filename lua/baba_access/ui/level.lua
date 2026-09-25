@@ -67,9 +67,7 @@ local function flush(line, interrupt)
 	for _, p in ipairs(pending) do parts[#parts + 1] = p end
 	pending = {}
 	if line and line ~= "" then parts[#parts + 1] = line end
-	if #parts == 0 then return end
-	-- One announcement per part; only the first interrupts.
-	for i, p in ipairs(parts) do speech.speak(p, interrupt and i == 1) end
+	speech.speak_lines(parts, interrupt)
 end
 
 -- The line for where the player is now: "<name>, col, row[, contents]" with
@@ -114,7 +112,7 @@ function M.announce_level()
 	for _, l in ipairs(events.sign_lines()) do lines[#lines + 1] = l end
 	pending = {}
 	known_rules = rules_set()
-	for i, line in ipairs(lines) do speech.speak(line, i == 1) end
+	speech.speak_lines(lines)
 end
 
 
@@ -190,7 +188,7 @@ function M.say_rules()
 	if not state.in_level() then speech.speak(i18n.t("level.none"), true); return end
 	local rules = state.rules()
 	if #rules == 0 then speech.speak(i18n.t("level.no_rules"), true); return end
-	for i, r in ipairs(rules) do speech.speak(r, i == 1) end
+	speech.speak_lines(rules)
 end
 
 -- C: the player's coordinates alone, "col, row".

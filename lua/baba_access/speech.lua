@@ -38,6 +38,17 @@ function M.join(parts)
 	return table.concat(out, ", ")
 end
 
+-- Several announcements in a row: each line is its own speech call, the
+-- first interrupting when `interrupt` is true (the default), the rest queued,
+-- so a screen reader user can step through them. A line that is empty (after
+-- clean) is skipped and does not use up the interrupt.
+function M.speak_lines(lines, interrupt)
+	local first = true
+	for _, line in ipairs(lines) do
+		if M.speak(line, first and interrupt ~= false) then first = false end
+	end
+end
+
 function M.speak(text, interrupt)
 	text = M.clean(text)
 	if text == "" then return false end

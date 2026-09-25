@@ -54,7 +54,7 @@ local function announce_entry(name)
 	if title then lines[#lines + 1] = title end
 	for _, t in ipairs(menu.static_text(name)) do lines[#lines + 1] = t end
 	if #buttons > 0 then lines[#lines + 1] = describe(focus) end
-	for i, line in ipairs(lines) do speech.speak(line, i == 1) end
+	speech.speak_lines(lines)
 end
 
 function M.active()

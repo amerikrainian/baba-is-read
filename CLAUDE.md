@@ -218,7 +218,9 @@ are ours because the game draws most menus without a name.
 
 ## Hard rules
 - **All speech through `speech.speak(text, interrupt)`**; never call the bridge's `speak`. Navigation
-  moves interrupt; screen entry and feedback queue.
+  moves interrupt; screen entry and feedback queue. **Several lines go through
+  `speech.speak_lines(lines, interrupt)`**: one call per line, only the first interrupting, so the
+  user can step through them; never join announcements with ". ".
 - **Never cache game state.** Read the button objects and tables at speak time.
 - **Reuse game text** (`i18n.game`, `BUTTONTEXT`, `writetext` captures) wherever it exists; every
   mod-authored word lives in `lang/en.lua`, never inline in a speak call.

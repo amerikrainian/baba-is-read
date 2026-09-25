@@ -200,7 +200,7 @@ local function announce_entry(state)
 	end
 	local text, key, value = M.describe(state, true)
 	lines[#lines + 1] = text
-	for i, line in ipairs(lines) do speech.speak(line, i == 1) end
+	speech.speak_lines(lines)
 	remember(state, key, value)
 end
 
