@@ -248,11 +248,21 @@ local function read_jump(delta)
 	speech.speak(speech.join({ state.pos_text(rx, ry), e.label }), true)
 end
 
+-- [ and ]: the next category with entries; an empty one is passed over.
 local function switch_category(delta)
-	category = ((category - 1 + delta) % #CATEGORIES) + 1
-	read_index = 0
-	local name = i18n.t("cat." .. CATEGORIES[category])
-	speech.speak(i18n.t("cat.switched", name, #M.objects(CATEGORIES[category])), true)
+	local n = #CATEGORIES
+	local i = category
+	for _ = 1, n do
+		i = ((i - 1 + delta) % n) + 1
+		local count = #M.objects(CATEGORIES[i])
+		if count > 0 then
+			category = i
+			read_index = 0
+			speech.speak(i18n.t("cat.switched", i18n.t("cat." .. CATEGORIES[i]), count), true)
+			return
+		end
+	end
+	speech.speak(i18n.t("level.no_objects"), true)
 end
 
 -- C: the game cursor's coordinates alone, "col, row".

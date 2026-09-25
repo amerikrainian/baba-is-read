@@ -52,7 +52,14 @@ return {
 	["cat.rules"] = "rules",
 	["cat.all"] = "all",
 	["cat.levels"] = "levels",
+	["cat.markers"] = "markers",
 	["cat.switched"] = "{0}, {1}",          -- category name, entry count
+
+	-- Markers (slash, Shift+slash, Ctrl+Shift+slash)
+	["marker.name"] = "marker {0}",
+	["marker.cleared"] = "cleared",
+	["marker.all_cleared"] = "all cleared",
+	["marker.none"] = "no marker",
 
 	-- The world map
 	["map.entry"] = "map. {0} open, {1} locked, {2} completed",

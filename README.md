@@ -10,7 +10,7 @@ A screen-reader accessibility mod for Baba Is You (Steam, Windows). Speech goes 
 
 - Dialogs without a cursor, such as the restart confirmation, get one: Up and Down choose a button, Enter presses it.
 - In a level: the level name, its rules and your position when it starts; after each move the new position as "column, row" (column first, like chess notation) plus whatever shares the tile, or "blocked, wall"; rule changes as "new: rock is win" or "gone: wall is stop"; win, undo, and "no you".
-- Exploration cursor: in a level the arrow keys read the tiles, each step "column, row, contents", while nothing in the level moves. WASD move you, as the game always allowed. Period and comma jump to the next and previous entry of the current reading category, wrapping around; [ and ] switch the category between objects (everything but text, terrain such as walls and water, and you), rules (each parsed rule as one entry plus loose text words) and all. Ctrl+arrows skip a run of identical tiles, landing on the first tile that reads differently (the wall past a stretch of floor, the floor past a stretch of wall). Home returns the cursor to you. T reads the rules, H where you are, L the object counts.
+- Exploration cursor: in a level the arrow keys read the tiles, each step "column, row, contents", while nothing in the level moves. WASD move you, as the game always allowed. Period and comma jump to the next and previous entry of the current reading category, wrapping around; [ and ] switch the category between objects (everything but text, terrain such as walls and water, and you), rules (each parsed rule as one entry plus loose text words) markers and all; a category with nothing in it is skipped. Ctrl+arrows skip a run of identical tiles, landing on the first tile that reads differently (the wall past a stretch of floor, the floor past a stretch of wall). Slash places a marker on the cursor's tile ("marker 1", "marker 2", ... for the level), Shift+slash clears the one there, Ctrl+Shift+slash clears them all; a marker is read with its tile. Home returns the cursor to you. T reads the rules, H where you are, L the object counts.
 
 - The world map: on entry "map. 3 open, 10 locked, 0 completed" and the tile under the cursor. The arrows walk the game's cursor along the paths, each tile read as "column, row" with the level there and its status, or the directions that continue. L lists every visible level with its status, reachable ones first; Enter on a reachable one moves the cursor there, and Enter again starts it. Period and comma read the map without moving the cursor, [ and ] switching between levels, rules and all; Home returns the reading position to the cursor.
 
@@ -26,7 +26,10 @@ The game's own keys are unchanged, except that inside a level the arrows belong 
 | Arrows | In a level: step the exploration cursor (WASD move you). On the map: the game's cursor |
 | Ctrl+Arrows | In a level: skip identical tiles, landing on the first that reads differently |
 | Period, Comma | Next and previous entry of the reading category, wrapping around |
-| [, ] | Previous and next reading category: objects, rules, all (levels, rules, all on the map) |
+| [, ] | Previous and next reading category: objects, rules, markers, all (levels, rules, all on the map); empty ones skipped |
+| / | Place a marker on the cursor's tile |
+| Shift+/ | Clear the marker on the cursor's tile |
+| Ctrl+Shift+/ | Clear every marker in the level |
 | Home | Reading position back to you or the map cursor |
 | C | Your coordinates alone: column, row (the map cursor on the map) |
 | T, H, L | In a level: the rules, where you are, the object counts |

@@ -177,9 +177,11 @@ level (`level` and `explore` layers, `state.in_puzzle()`): the ARROWS are the ex
 (decided: always, no mode to toggle; the player moves with the game's WASD, which the mod never
 captures), Ctrl+arrows skip a run of tiles that read the same as the cursor's and land on the first
 that reads differently (or the run's last tile at the edge), period/comma jump to the next/previous entry in reading order from the cursor, wrapping,
-within a category that [ and ] cycle (`level_state.CATEGORIES`: objects = non-text, non-terrain
-(`TILING ~= 1`, so no walls, water, hedges), not the player; rules = parsed rules plus loose text;
-all), Home parks the cursor on the player, C the player's coordinates alone, T the rules, H where you are, L the object counts. On the
+within a category that [ and ] cycle, skipping empty ones (`level_state.CATEGORIES`: objects =
+non-text, non-terrain (`TILING ~= 1`, so no walls, water, hedges), not the player; rules = parsed
+rules plus loose text; all; plus explore's own markers), slash places "marker n" on the cursor's
+tile (per level, in memory for the session; Shift+slash clears the tile's, Ctrl+Shift+slash all;
+a marker is read as tile contents and stops the skip), Home parks the cursor on the player, C the player's coordinates alone, T the rules, H where you are, L the object counts. On the
 world map (`map` layer, `state.is_map()`): the arrows are the GAME's and walk its cursor, every tile
 spoken; period/comma are a reading cursor over the map with categories levels, rules, all, and Home
 returns it to the game cursor, C the game cursor's coordinates alone; L opens the level
