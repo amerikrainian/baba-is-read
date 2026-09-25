@@ -1,6 +1,7 @@
 -- Level announcer: what happens in a level, from the game's own hooks.
 --
---   level start     -> "<number>, <level name>. <subtitle>. <rules>. <you>, col, row"
+--   level start     -> "<number>, <level name>", the subtitle, each rule, "<you>, col, row",
+--                      one announcement each
 --   a move          -> "col, row[, what is on the tile]"      (the player moved)
 --                      "blocked[, what is ahead]"             (the player did not)
 --                      "wait"                                  (a passed turn)
@@ -101,15 +102,16 @@ local function name_lines()
 	return out
 end
 
+-- One announcement per line: the name (interrupting), each rule on its own,
+-- then where you are, so a reader can step through them.
 function M.announce_level()
 	local lines = name_lines()
-	local rules = state.rules()
-	if #rules > 0 then lines[#lines + 1] = table.concat(rules, ", ") end
+	for _, r in ipairs(state.rules()) do lines[#lines + 1] = r end
 	lines[#lines + 1] = where_line(true)
 	for _, l in ipairs(events.sign_lines()) do lines[#lines + 1] = l end
 	pending = {}
 	known_rules = rules_set()
-	speech.speak(table.concat(lines, ". "), true)
+	for i, line in ipairs(lines) do speech.speak(line, i == 1) end
 end
 
 
@@ -189,7 +191,8 @@ end
 function M.say_rules()
 	if not state.in_level() then speech.speak(i18n.t("level.none"), true); return end
 	local rules = state.rules()
-	speech.speak(#rules > 0 and table.concat(rules, ", ") or i18n.t("level.no_rules"), true)
+	if #rules == 0 then speech.speak(i18n.t("level.no_rules"), true); return end
+	for i, r in ipairs(rules) do speech.speak(r, i == 1) end
 end
 
 -- C: the player's coordinates alone, "col, row".
