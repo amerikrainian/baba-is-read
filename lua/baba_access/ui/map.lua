@@ -232,9 +232,10 @@ function M.objects(cat)
 	return out
 end
 
-local function read_jump(delta)
+-- Moves the reading cursor to the next (or previous) entry, returning its line.
+local function read_jump_line(delta)
 	local entries = M.objects(CATEGORIES[category])
-	if #entries == 0 then speech.speak(i18n.t("level.no_objects"), true); return end
+	if #entries == 0 then return i18n.t("level.no_objects") end
 	if read_index == 0 then
 		local after = #entries + 1
 		for i, e in ipairs(entries) do
@@ -245,10 +246,15 @@ local function read_jump(delta)
 	read_index = ((read_index - 1 + delta) % #entries) + 1
 	local e = entries[read_index]
 	rx, ry = e.x, e.y
-	speech.speak(speech.join({ state.pos_text(rx, ry), e.label }), true)
+	return speech.join({ state.pos_text(rx, ry), e.label })
 end
 
--- [ and ]: the next category with entries; an empty one is passed over.
+local function read_jump(delta)
+	speech.speak(read_jump_line(delta), true)
+end
+
+-- [ and ]: the next category with entries; an empty one is passed over. The
+-- switch then lands on the next entry, as a period press would.
 local function switch_category(delta)
 	local n = #CATEGORIES
 	local i = category
@@ -258,7 +264,7 @@ local function switch_category(delta)
 		if count > 0 then
 			category = i
 			read_index = 0
-			speech.speak(i18n.t("cat.switched", i18n.t("cat." .. CATEGORIES[i]), count), true)
+			speech.speak_lines({ i18n.t("cat.switched", i18n.t("cat." .. CATEGORIES[i]), count), read_jump_line(1) })
 			return
 		end
 	end

@@ -164,9 +164,10 @@ local function entries_now()
 	return out
 end
 
-local function jump(delta)
+-- Moves the cursor to the next (or previous) entry and returns its line.
+local function jump_line(delta)
 	local entries = entries_now()
-	if #entries == 0 then speech.speak(i18n.t("level.no_objects"), true); return end
+	if #entries == 0 then return i18n.t("level.no_objects") end
 	if jump_index == 0 then
 		-- Start from the cursor: the first entry after it in reading order,
 		-- or the last one before it.
@@ -179,11 +180,16 @@ local function jump(delta)
 	jump_index = ((jump_index - 1 + delta) % #entries) + 1
 	local e = entries[jump_index]
 	cx, cy = e.x, e.y
-	speech.speak(speech.join({ state.pos_text(cx, cy), e.label }), true)
+	return speech.join({ state.pos_text(cx, cy), e.label })
+end
+
+local function jump(delta)
+	speech.speak(jump_line(delta), true)
 end
 
 -- [ and ]: the next category in the cycle that has entries; a category with
--- nothing in it is passed over. With nothing anywhere, "no objects".
+-- nothing in it is passed over. With nothing anywhere, "no objects". The
+-- switch then lands on the next entry, as a period press would.
 local function switch_category(delta)
 	local n = #CATEGORIES
 	local i = category
@@ -194,7 +200,7 @@ local function switch_category(delta)
 			category = i
 			kind = nil
 			jump_index = 0
-			speech.speak(i18n.t("cat.switched", i18n.t("cat." .. CATEGORIES[i]), count), true)
+			speech.speak_lines({ i18n.t("cat.switched", i18n.t("cat." .. CATEGORIES[i]), count), jump_line(1) })
 			return
 		end
 	end
@@ -202,8 +208,8 @@ local function switch_category(delta)
 end
 
 -- Shift+period / Shift+comma: the next or previous kind within the category,
--- "all kinds" first in the cycle. Announces the kind and its count; the
--- cursor stays.
+-- "all kinds" first in the cycle. Announces the kind and its count, then
+-- lands on the next entry of it, as a period press would.
 local function switch_kind(delta)
 	local names, counts = kinds_now()
 	if #names == 0 then speech.speak(i18n.t("level.no_objects"), true); return end
@@ -216,13 +222,15 @@ local function switch_kind(delta)
 	end
 	i = ((i - 1 + delta) % n) + 1
 	jump_index = 0
+	local header
 	if i == 1 then
 		kind = nil
-		speech.speak(i18n.t("cat.switched", i18n.t("kind.all"), #entries_for(CATEGORIES[category])), true)
+		header = i18n.t("cat.switched", i18n.t("kind.all"), #entries_for(CATEGORIES[category]))
 	else
 		kind = names[i - 1]
-		speech.speak(i18n.t("cat.switched", kind, counts[kind]), true)
+		header = i18n.t("cat.switched", kind, counts[kind])
 	end
+	speech.speak_lines({ header, jump_line(1) })
 end
 
 -- Slash: a marker on the cursor's tile, numbered after the level's last.
