@@ -194,7 +194,7 @@ local function announce_entry(state)
 	if mods.menu_nav then mods.menu_nav.reset(); state.virtual = nil end
 	local title = M.title(state.name)
 	local lines = {}
-	if title then lines[#lines + 1] = speech.join({ title, i18n.t("role.menu") }) end
+	if title then lines[#lines + 1] = title end
 	if config.get("speak_menu_text") and not overrides.menu(state.name).hidden_text then
 		for _, t in ipairs(M.static_text(state.name)) do lines[#lines + 1] = t end
 	end

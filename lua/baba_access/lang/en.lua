@@ -14,7 +14,6 @@ return {
 	["role.toggle"] = "toggle",
 	["role.slider"] = "slider",
 	["role.radio"] = "radio button",
-	["role.menu"] = "menu",
 
 	-- States
 	["state.on"] = "on",
