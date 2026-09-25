@@ -150,6 +150,14 @@ function M.say_rules()
 	speech.speak(#rules > 0 and table.concat(rules, ", ") or i18n.t("level.no_rules"), true)
 end
 
+-- C: the player's coordinates alone, "col, row".
+function M.say_coords()
+	if not state.in_level() then speech.speak(i18n.t("level.none"), true); return end
+	local u = state.you_units()[1]
+	if not u then speech.speak(i18n.t("level.no_you"), true); return end
+	speech.speak(state.pos_text(u.values[XPOS], u.values[YPOS]), true)
+end
+
 function M.say_where()
 	if not state.in_level() then speech.speak(i18n.t("level.none"), true); return end
 	speech.speak(where_line(true), true)
@@ -177,6 +185,7 @@ function M.attach(m)
 	input.layer("level", state.in_puzzle)
 	input.bind("level", "t", "level.rules", M.say_rules)
 	input.bind("level", "h", "level.where", M.say_where)
+	input.bind("level", "c", "level.coords", M.say_coords)
 	input.bind("level", "l", "level.census", M.say_census)
 end
 

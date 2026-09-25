@@ -178,10 +178,10 @@ level (`level` and `explore` layers, `state.in_puzzle()`): the ARROWS are the ex
 captures), period/comma jump to the next/previous entry in reading order from the cursor, wrapping,
 within a category that [ and ] cycle (`level_state.CATEGORIES`: objects = non-text, non-terrain
 (`TILING ~= 1`, so no walls, water, hedges), not the player; rules = parsed rules plus loose text;
-all), Home parks the cursor on the player, C re-reads the cursor tile, T the rules, H where you are, L the object counts. On the
+all), Home parks the cursor on the player, C the player's coordinates alone, T the rules, H where you are, L the object counts. On the
 world map (`map` layer, `state.is_map()`): the arrows are the GAME's and walk its cursor, every tile
 spoken; period/comma are a reading cursor over the map with categories levels, rules, all, and Home
-returns it to the game cursor, C re-reads its tile; L opens the level
+returns it to the game cursor, C the game cursor's coordinates alone; L opens the level
 list (`map_list` layer: Up/Down, Enter, Escape or L), H reads the cursor's tile. **Decided: the
 game's map cursor is moved by the mod only through the list, and only onto a reachable open
 level** (BFS over passable tiles from where it stands, the engine's own passability rule): the map
