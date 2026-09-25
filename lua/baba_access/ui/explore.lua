@@ -8,9 +8,10 @@
 -- parsed rule is one entry, landing on its first word); [ and ] switch the
 -- category (objects, rules, markers, all; see CATEGORIES below), skipping
 -- any category with nothing in it. Within a category, Shift+period and
--- Shift+comma cycle the kind: "all kinds", then every distinct name present
+-- Shift+comma cycle the kind: "all", then every distinct name present
 -- (skull, rock, flag, ...), and period/comma then jump among that kind only;
--- a category switch resets the kind. Ctrl+arrows skip a run of identical
+-- a category switch resets the kind. The rules category has no kinds: the
+-- keys do nothing there. Ctrl+arrows skip a run of identical
 -- tiles: the cursor lands on the first tile in that direction whose contents
 -- differ from the tile it stands on, or on the last tile of the run when the
 -- run reaches the edge. Home returns the cursor to the player.
@@ -211,6 +212,7 @@ end
 -- "all kinds" first in the cycle. Announces the kind and its count, then
 -- lands on the next entry of it, as a period press would.
 local function switch_kind(delta)
+	if CATEGORIES[category] == "rules" then return end
 	local names, counts = kinds_now()
 	if #names == 0 then speech.speak(i18n.t("level.no_objects"), true); return end
 	local n = #names + 1   -- slot 1 is "all kinds"

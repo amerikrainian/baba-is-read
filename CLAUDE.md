@@ -187,7 +187,7 @@ that reads differently (or the run's last tile at the edge), period/comma jump t
 within a category that [ and ] cycle, skipping empty ones (`level_state.CATEGORIES`: objects =
 non-text, non-terrain (`TILING ~= 1`, so no walls, water, hedges), not the player; rules = parsed
 rules plus loose text; all; plus explore's own markers; Shift+period/comma cycle a kind within the
-category, one distinct label or all; every category or kind switch then lands on the next entry
+category, one distinct label or all, none in rules; every category or kind switch then lands on the next entry
 as period would, in levels and on the map), slash places "marker n" on the cursor's
 tile (per level, in memory for the session; Shift+slash clears the tile's, Ctrl+Shift+slash all;
 a marker is read as tile contents and stops the skip), Home parks the cursor on the player, C the player's coordinates alone, T the rules, H where you are, L the object counts. On the

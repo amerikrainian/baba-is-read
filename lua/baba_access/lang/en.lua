@@ -76,7 +76,7 @@ return {
 	["cat.levels"] = "levels",
 	["cat.markers"] = "markers",
 	["cat.switched"] = "{0}, {1}",          -- category name, entry count
-	["kind.all"] = "all kinds",             -- Shift+period/comma: no kind chosen
+	["kind.all"] = "all",                   -- Shift+period/comma: no kind chosen
 
 	-- Markers (slash, Shift+slash, Ctrl+Shift+slash)
 	["marker.name"] = "marker {0}",
