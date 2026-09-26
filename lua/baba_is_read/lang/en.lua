@@ -96,10 +96,10 @@ return {
 	["map.gate_dir"] = "gate {0}, needs {1}",  -- direction, requirement
 	["map.count_prizes"] = "{0} levels",
 	["map.count_clears"] = "{0} areas",
-	["map.count_bonus"] = "{0} bonus",
+	["map.count_bonus"] = "{0} orbs",
 	["map.count_local"] = "{0} levels here",
-	["map.progress"] = "{0} of {1} levels, {2} of {3} areas, {4} of {5} bonus",
-	["map.progress_nomax"] = "{0} levels, {1} areas, {2} bonus",
+	["map.progress"] = "{0} of {1} levels, {2} of {3} areas, {4} of {5} orbs",
+	["map.progress_nomax"] = "{0} levels, {1} areas, {2} orbs",
 	["map.new_level"] = "new: {0}",
 	["map.revealed"] = "revealed: {0}",
 	["map.gate_opened"] = "gate opened, {0}",
