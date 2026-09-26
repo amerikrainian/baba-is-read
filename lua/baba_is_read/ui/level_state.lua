@@ -129,45 +129,140 @@ function M.you_units()
 	return list
 end
 
--- Active rules as spoken lines, in the order the game lists them.
+-- A rule word as the pause screen prints it: the game's display names for
+-- its internal ones (word_names in values.lua: "turn" is "turn right"), a
+-- leading "not " kept in front.
+local function display_word(w)
+	w = tostring(w):gsub("^text_", "")
+	local isnot, bare = "", w
+	if w:sub(1, 4) == "not " then isnot, bare = "not ", w:sub(5) end
+	local names = type(word_names) == "table" and word_names or {}
+	return isnot .. (names[bare] or bare)
+end
+
+-- One parsed rule worded as the game's pause screen words it (tools.lua):
+-- a condition with operands ("on water", "near baba & facing wall") between
+-- the subject and the verb, a bare one ("lonely") before the subject, then
+-- the verb and the effect. r = { {subject, verb, effect}, conds, ids, tags }.
+local function rule_text(r)
+	local prefix, infix = {}, {}
+	for _, cond in ipairs(type(r[2]) == "table" and r[2] or {}) do
+		local args = type(cond[2]) == "table" and cond[2] or {}
+		if #args == 0 then
+			prefix[#prefix + 1] = display_word(cond[1])
+		else
+			local ops = {}
+			for _, a in ipairs(args) do ops[#ops + 1] = display_word(a) end
+			infix[#infix + 1] = display_word(cond[1]) .. " " .. table.concat(ops, " & ")
+		end
+	end
+	local parts = {}
+	for _, p in ipairs(prefix) do parts[#parts + 1] = p end
+	parts[#parts + 1] = display_word(r[1][1])
+	if #infix > 0 then parts[#parts + 1] = table.concat(infix, " & ") end
+	parts[#parts + 1] = display_word(r[1][2])
+	parts[#parts + 1] = display_word(r[1][3])
+	local text = table.concat(parts, " ")
+	for _, tag in ipairs(type(r[4]) == "table" and r[4] or {}) do
+		if tag == "mimic" then text = text .. " (mimic)" end
+	end
+	return text
+end
+M.rule_text = rule_text
+
+-- Active rules as spoken lines, in the order and the wording of the game's
+-- pause screen: one line per parsed rule, so BABA IS YOU AND SINK on the
+-- board is "baba is you" and "baba is sink" here (a rule change is then the
+-- one rule that came or went). The board wording is M.sentences().
 function M.rules()
 	local out = {}
 	if type(visualfeatures) ~= "table" then return out end
 	for _, r in ipairs(visualfeatures) do
-		if type(r[1]) == "table" then
-			local words = {}
-			for _, w in ipairs(r[1]) do words[#words + 1] = tostring(w):gsub("^text_", "") end
-			out[#out + 1] = table.concat(words, " ")
-		end
+		if type(r[1]) == "table" and #r[1] == 3 then out[#out + 1] = rule_text(r) end
 	end
 	return out
 end
 
--- The rules the game has parsed from text on screen, each with the text
--- units spelling it: { words = "baba is you", units = {...}, x =, y = } with
--- x, y the first word's tile. visualfeatures[i][3] holds one id list per word.
-function M.rules_with_units()
+-- The sentences written on the board, as a sighted player reads them. The
+-- game keeps only the parsed triples (visualfeatures: "baba is you" and
+-- "baba is sink" for BABA IS YOU AND SINK), each citing in [3] the text units
+-- it was read from, AND and condition words included; the triples lying on
+-- one row or column and sharing a unit are one sentence, its words in board
+-- order. A sentence crossing another shares a word with it but not a line,
+-- so the two stay apart. Returns { words = "baba is you and sink",
+-- units = {...}, x =, y = } per sentence, x, y its first word's tile, in the
+-- order the game lists the rules.
+function M.sentences()
 	local out = {}
 	if type(visualfeatures) ~= "table" then return out end
+	-- Each parsed rule with its visible units and the line it lies on.
+	local entries = {}
 	for _, r in ipairs(visualfeatures) do
-		if type(r[1]) == "table" and type(r[3]) == "table" then
-			local words = {}
-			for _, w in ipairs(r[1]) do words[#words + 1] = tostring(w):gsub("^text_", "") end
-			local units_, first = {}, nil
+		if type(r[3]) == "table" then
+			local units_, seen = {}, {}
+			local row, col, same_row, same_col = nil, nil, true, true
 			for _, group in ipairs(r[3]) do
 				local ids = type(group) == "table" and group or { group }
 				for _, id in ipairs(ids) do
-					local u = mmf.newObject(id)
-					if M.is_visible(u) then
-						units_[#units_ + 1] = u
-						if not first then first = u end
+					if not seen[id] then
+						seen[id] = true
+						local u = mmf.newObject(id)
+						if M.is_visible(u) then
+							units_[#units_ + 1] = u
+							local x, y = u.values[XPOS], u.values[YPOS]
+							if row == nil then row, col = y, x end
+							if y ~= row then same_row = false end
+							if x ~= col then same_col = false end
+						end
 					end
 				end
 			end
-			if first then
-				out[#out + 1] = { words = table.concat(words, " "), units = units_, x = first.values[XPOS], y = first.values[YPOS] }
+			if #units_ > 0 and (same_row or same_col) then
+				local line = same_row and ("r" .. tostring(row)) or ("c" .. tostring(col))
+				entries[#entries + 1] = { units = units_, line = line, vertical = not same_row }
 			end
 		end
+	end
+	-- Merge the entries on one line that share a unit (union-find).
+	local parent = {}
+	for i = 1, #entries do parent[i] = i end
+	local function find(i)
+		while parent[i] ~= i do parent[i] = parent[parent[i]]; i = parent[i] end
+		return i
+	end
+	local owner = {}
+	for i, e in ipairs(entries) do
+		for _, u in ipairs(e.units) do
+			local key = e.line .. ":" .. tostring(u.fixed)
+			local j = owner[key]
+			if j then parent[find(i)] = find(j) else owner[key] = i end
+		end
+	end
+	local groups, order = {}, {}
+	for i, e in ipairs(entries) do
+		local root = find(i)
+		local g = groups[root]
+		if not g then
+			g = { units = {}, seen = {}, vertical = e.vertical }
+			groups[root] = g
+			order[#order + 1] = root
+		end
+		for _, u in ipairs(e.units) do
+			if not g.seen[u.fixed] then g.seen[u.fixed] = true; g.units[#g.units + 1] = u end
+		end
+	end
+	for _, root in ipairs(order) do
+		local g = groups[root]
+		table.sort(g.units, function(a, b)
+			if g.vertical then return a.values[YPOS] < b.values[YPOS] end
+			return a.values[XPOS] < b.values[XPOS]
+		end)
+		local words = {}
+		for _, u in ipairs(g.units) do
+			words[#words + 1] = tostring(u.strings[UNITNAME] or ""):gsub("^text_", "")
+		end
+		local first = g.units[1]
+		out[#out + 1] = { words = table.concat(words, " "), units = g.units, x = first.values[XPOS], y = first.values[YPOS] }
 	end
 	return out
 end
@@ -198,12 +293,12 @@ end
 
 -- The reading cursor's categories, in [ ] order: "all" is every entry,
 -- "objects" the non-text objects that are neither terrain nor floor
--- decoration, "rules" each parsed rule (one entry at its first word) and
+-- decoration, "rules" each sentence on the board (one entry at its first word) and
 -- every loose text word.
 M.CATEGORIES = { "objects", "rules", "all" }
 
 -- What the reading cursor stops on, in reading order, for a category: each
--- parsed rule as one entry at its first word, every other visible text word
+-- sentence on the board as one entry at its first word, every other visible text word
 -- on its own, and every visible object with a rule (scenery when configured).
 -- Entries are { x =, y =, label = }; `exclude` is a set of fixed ids to
 -- leave out.
@@ -212,7 +307,7 @@ function M.reading_entries(exclude, category)
 	category = category or "all"
 	local out = {}
 	local in_rule = {}
-	for _, r in ipairs(M.rules_with_units()) do
+	for _, r in ipairs(M.sentences()) do
 		for _, u in ipairs(r.units) do in_rule[u.fixed] = true end
 		if category ~= "objects" then
 			out[#out + 1] = { x = r.x, y = r.y, label = i18n.t("level.text", r.words) }

@@ -33,6 +33,7 @@ local M = {}
 local speech, i18n, hooks, input, config, log, state
 
 local announce_start = false -- set by the level_start hook
+local announce_wait = 0      -- frames since the map loaded while the entry line is held back
 local last_tile = nil       -- "x,y" of the cursor last spoken
 local list = nil            -- { items = {...}, index = n } while the list is open
 local rx, ry = 0, 0         -- the reading cursor (period, comma, Home)
@@ -358,16 +359,34 @@ function M.announce_map()
 	speech.speak_lines(lines)
 end
 
+-- Whether the map is playing its unlock animation. After a win the map loads
+-- in its pre-win state and the engine-called unlockeffect then, frame by frame
+-- over a few seconds, marks the icon completed, spawns the prize and reveals
+-- the new paths; its state machine is generaldata2.values[UNLOCK] (0 idle),
+-- the value the game's own cursor code checks to know the map is busy.
+function M.busy()
+	return type(generaldata2) == "table" and type(generaldata2.values) == "table"
+		and (generaldata2.values[UNLOCK] or 0) ~= 0
+end
+
+local HOLD_MIN = 10   -- frames after load before the entry line, so an animation starting late is caught
+local HOLD_MAX = 900  -- frames: the entry line is spoken anyway if the animation never ends
+
 -- The map is announced only when the game's level_start hook has fired for
 -- it; a menu closing over it, or a transition frame, never repeats the line.
+-- The line waits for the unlock animation (decided: silence meanwhile, the
+-- game's own sounds fill it), so the counts, the change list and the cursor
+-- tile describe the map after the win, not before it.
 function M.tick()
 	if announce_start and state.level_loaded() then
+		if not state.is_map() then announce_start = false; return end
+		announce_wait = announce_wait + 1
+		if announce_wait < HOLD_MAX and (announce_wait < HOLD_MIN or M.busy()) then return end
 		announce_start = false
-		if state.is_map() then
-			M.announce_map()
-			local c = M.cursor_unit()
-			if c then rx, ry = c.values[XPOS], c.values[YPOS]; read_index, anchor = 0, nil end
-		end
+		if announce_wait >= HOLD_MAX then log.warn("map: unlock animation still running after %d frames, announcing anyway", announce_wait) end
+		M.announce_map()
+		local c = M.cursor_unit()
+		if c then rx, ry = c.values[XPOS], c.values[YPOS]; read_index, anchor = 0, nil end
 		return
 	end
 	if not (state.in_level() and state.is_map()) then list = nil; return end
@@ -569,9 +588,9 @@ end
 
 function M.attach(m)
 	speech, i18n, hooks, input, config, log, state = m.speech, m.i18n, m.hooks, m.input, m.config, m.log, m.level_state
-	announce_start, last_tile, list = false, nil, nil
+	announce_start, announce_wait, last_tile, list = false, 0, nil, nil
 	hints_cache, clear_spoken = nil, {}
-	hooks.on("level_start", "map.start", function() announce_start = true end)
+	hooks.on("level_start", "map.start", function() announce_start, announce_wait = true, 0 end)
 	-- The game's map-clear effect runs once per frame while it plays; its
 	-- "Map clear!" text is spoken once per effect.
 	hooks.wrap("unlockeffect", function(orig, dataid, ...)
