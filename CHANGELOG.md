@@ -6,6 +6,7 @@
 - Fixed announcing updated state of the map before animation completed and hence telling you incorrect information.
 - Fixed dead-ends that were actually gates not speaking this fact.
 - The objects category now includes the player as an object of its kind.
+- Announce when objects float.
 
 ## V0.0.1
 

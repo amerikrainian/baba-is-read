@@ -55,6 +55,23 @@ function M.name_of(unit)
 	return name
 end
 
+-- Whether a unit floats now: the game writes values[FLOAT] at every rule
+-- update, 1 under an "is float" rule, 0 otherwise (2 and 3 are the DONE and
+-- ending states, not floating). Two objects on one tile interact only when
+-- their float states match, so a floating flag never wins a walking Baba.
+function M.is_floating(unit)
+	return unit ~= nil and unit.values ~= nil and unit.values[FLOAT] == 1
+end
+
+-- The name with the float state after it when the unit floats ("flag, float"),
+-- the bare name otherwise. Tile readouts and the reading cursor use this;
+-- counts, events and the census stay on name_of.
+function M.label_of(unit)
+	local name = M.name_of(unit)
+	if M.is_floating(unit) then return i18n.t("level.float", name) end
+	return name
+end
+
 -- Floor decoration is left out of tile readouts (config quiet_objects, a
 -- comma-separated list of names; "tile" by default); everything else a sighted
 -- player sees is read, whether or not a rule mentions it, since a wall that
@@ -90,22 +107,29 @@ function M.units_at(x, y)
 end
 
 -- Spoken contents of a tile: names with counts ("rock", "wall, baba text"),
--- skipping `exclude` (a unit) and inert objects unless configured. Empty
--- string for nothing worth saying.
+-- floating objects marked ("rock 2, float"; floating and grounded objects of
+-- one name are separate groups), skipping `exclude` (a unit) and inert objects
+-- unless configured. Empty string for nothing worth saying.
 function M.describe_tile(x, y, exclude)
-	local counts, order = {}, {}
+	local groups, order = {}, {}
 	for _, u in ipairs(M.units_at(x, y)) do
 		local skip = (exclude ~= nil and u.fixed == exclude.fixed)
 		if not skip and not config.get("speak_inert") and M.is_inert(u) then skip = true end
 		if not skip then
-			local n = M.name_of(u)
-			if not counts[n] then counts[n] = 0; order[#order + 1] = n end
-			counts[n] = counts[n] + 1
+			local n, float = M.name_of(u), M.is_floating(u)
+			local key = n .. (float and "\1" or "")
+			if not groups[key] then
+				groups[key] = { name = n, float = float, count = 0 }
+				order[#order + 1] = key
+			end
+			groups[key].count = groups[key].count + 1
 		end
 	end
 	local parts = {}
-	for _, n in ipairs(order) do
-		parts[#parts + 1] = counts[n] > 1 and i18n.t("level.count", n, counts[n]) or n
+	for _, key in ipairs(order) do
+		local g = groups[key]
+		local text = g.count > 1 and i18n.t("level.count", g.name, g.count) or g.name
+		parts[#parts + 1] = g.float and i18n.t("level.float", text) or text
 	end
 	return table.concat(parts, ", ")
 end
@@ -319,7 +343,7 @@ function M.reading_entries(exclude, category)
 			local keep = config.get("speak_inert") or not M.is_inert(u)
 			if category == "rules" then keep = is_text
 			elseif category == "objects" then keep = keep and not is_text and not M.is_terrain(u) end
-			if keep then out[#out + 1] = { x = u.values[XPOS], y = u.values[YPOS], label = M.name_of(u), unit = u } end
+			if keep then out[#out + 1] = { x = u.values[XPOS], y = u.values[YPOS], label = M.label_of(u), unit = u } end
 		end
 	end
 	table.sort(out, function(a, b)

@@ -31,7 +31,7 @@ local undo_delay = nil    -- frames to wait before speaking an undo (rules re-pa
 local function you_snapshot()
 	local snap = {}
 	for _, u in ipairs(state.you_units()) do
-		snap[u.fixed] = { x = u.values[XPOS], y = u.values[YPOS], name = state.name_of(u) }
+		snap[u.fixed] = { x = u.values[XPOS], y = u.values[YPOS], name = state.label_of(u) }
 	end
 	return snap
 end
@@ -70,14 +70,15 @@ local function flush(line, interrupt)
 	speech.speak_lines(parts, interrupt)
 end
 
--- The line for where the player is now: "<name>, col, row[, contents]" with
--- the name only when asked for or changed.
+-- The line for where the player is now: "<name>[, float], col, row[, contents]"
+-- with the name only when asked for or changed (a float change counts, since
+-- it decides what the player can touch).
 local function where_line(with_name, prev)
 	local you = state.you_units()
 	local u = you[1]
 	if not u then return i18n.t("level.no_you") end
 	local x, y = u.values[XPOS], u.values[YPOS]
-	local name = state.name_of(u)
+	local name = state.label_of(u)
 	local parts = {}
 	if with_name or (prev and prev.name ~= name) then parts[#parts + 1] = name end
 	parts[#parts + 1] = state.pos_text(x, y)

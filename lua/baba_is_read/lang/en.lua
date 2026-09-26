@@ -29,6 +29,7 @@ return {
 	["level.pos"] = "{0}, {1}",             -- column, row
 	["level.count"] = "{0} {1}",            -- name, count
 	["level.text"] = "{0} text",            -- the word BABA as opposed to the object
+	["level.float"] = "{0}, float",         -- an object under "is float"; grounded ones say nothing
 	["level.blocked"] = "blocked",
 	["level.blocked_by"] = "blocked, {0}",
 	["level.wait"] = "wait",
