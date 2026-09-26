@@ -167,12 +167,21 @@ end
 local GATE_KEYS = { [1] = "map.count_prizes", [2] = "map.count_clears", [3] = "map.count_bonus", [4] = "map.count_local" }
 
 -- The gates the map shows: a path with a requirement whose path has appeared
--- (the game spawns a locked object on it), as { x=, y=, need=, open= }.
+-- (the game spawns a locked object on it, PATH_TARGET), as { x=, y=, need=,
+-- open= }. Path objects are found tile by tile with the engine's MF_findpaths:
+-- the game's `paths` list holds only the paths that have NOT appeared yet
+-- (revealpaths drops every path from it as it shows up), so a visible gate is
+-- never in that list. The scan is cached for the frame; the tile readout asks
+-- several times per move.
+local gates_cache, gates_gen, tick_gen = nil, -1, 0
 function M.gates()
-	local out = {}
-	for _, id in ipairs(paths or {}) do
+	if gates_cache and gates_gen == tick_gen then return gates_cache end
+	local out, seen = {}, {}
+	local function consider(id)
+		if seen[id] then return end
+		seen[id] = true
 		local p = mmf.newObject(id)
-		local kind = p and p.values[PATH_GATE] or 0
+		local kind = p and p.values and p.values[PATH_GATE] or 0
 		if kind > 0 and (p.values[COMPLETED] or 0) > 0 and (p.values[PATH_TARGET] or 0) ~= 0 then
 			local g = mmf.newObject(p.values[PATH_TARGET])
 			local status = g and g.values[COMPLETED] or 0
@@ -180,6 +189,18 @@ function M.gates()
 				need = i18n.t(GATE_KEYS[kind] or "map.count_prizes", p.values[PATH_REQUIREMENT] or 0) }
 		end
 	end
+	if type(MF_findpaths) == "function" then
+		for y = 1, state.height() - 2 do
+			for x = 1, state.width() - 2 do
+				local ok, list_ = pcall(MF_findpaths, x, y)
+				if ok and type(list_) == "table" then
+					for _, id in ipairs(list_) do consider(id) end
+				end
+			end
+		end
+	end
+	for _, id in ipairs(paths or {}) do consider(id) end
+	gates_cache, gates_gen = out, tick_gen
 	return out
 end
 
@@ -378,6 +399,7 @@ local HOLD_MAX = 900  -- frames: the entry line is spoken anyway if the animatio
 -- game's own sounds fill it), so the counts, the change list and the cursor
 -- tile describe the map after the win, not before it.
 function M.tick()
+	tick_gen = tick_gen + 1
 	if announce_start and state.level_loaded() then
 		if not state.is_map() then announce_start = false; return end
 		announce_wait = announce_wait + 1
