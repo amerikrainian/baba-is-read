@@ -59,8 +59,8 @@ return {
 	["level.destroyed"] = "destroyed {0}",
 	["level.became"] = "{0} became {1}",
 	["level.made"] = "made {0}",
-	["level.bonus"] = "bonus",
-	["level.bonus_n"] = "bonus {0}",
+	["level.bonus"] = "orb",
+	["level.bonus_n"] = "orbs {0}",
 	["level.level_destroyed"] = "level destroyed",
 	["level.ending"] = "the end",
 	["level.all_done"] = "all is done",
@@ -91,7 +91,7 @@ return {
 	["map.list_title"] = "levels, {0}",
 	["map.list_closed"] = "closed",
 	["map.level_label"] = "{0}. {1}",       -- the number the icon shows, the name
-	["map.bonus"] = "bonus",                -- a level whose bonus is collected
+	["map.bonus"] = "orb",                  -- a level whose bonus is collected
 	["map.gate"] = "gate, needs {0}",
 	["map.gate_dir"] = "gate {0}, needs {1}",  -- direction, requirement
 	["map.count_prizes"] = "{0} levels",
