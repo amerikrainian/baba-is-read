@@ -7,7 +7,8 @@
 -- current category in reading order from the cursor, wrapping around (a
 -- parsed rule is one entry, landing on its first word); [ and ] switch the
 -- category (objects, rules, markers, all; see CATEGORIES below), skipping
--- any category with nothing in it. Within a category, Shift+period and
+-- any category with nothing in it. The player is an entry of its kind like
+-- any other object. Within a category, Shift+period and
 -- Shift+comma cycle the kind: "all", then every distinct name present
 -- (skull, rock, flag, ...), and period/comma then jump among that kind only;
 -- a category switch resets the kind. The rules category has no kinds: the
@@ -130,13 +131,13 @@ local function skip(dx, dy)
 end
 
 -- The entries of a category in reading order: the level's (level_state) with
--- the markers added for "all", the markers alone for "markers".
+-- the markers added for "all", the markers alone for "markers". The player
+-- is an object of its kind like any other (six pillars under "pillar is you"
+-- are six pillar entries), so period/comma and the kind cycle reach it.
 local function entries_for(cat)
 	local out = {}
 	if cat ~= "markers" then
-		local exclude = {}
-		for _, u in ipairs(state.you_units()) do exclude[u.fixed] = true end
-		out = state.reading_entries(exclude, cat)
+		out = state.reading_entries(nil, cat)
 	end
 	if cat == "markers" or cat == "all" then
 		for _, m in ipairs(marker_store().list) do

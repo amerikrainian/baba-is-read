@@ -221,7 +221,8 @@ level (`level` and `explore` layers, `state.in_puzzle()`): the ARROWS are the ex
 captures), Ctrl+arrows skip a run of tiles that read the same as the cursor's and land on the first
 that reads differently (or the run's last tile at the edge), period/comma jump to the next/previous entry in reading order from the cursor, wrapping,
 within a category that [ and ] cycle, skipping empty ones (`level_state.CATEGORIES`: objects =
-non-text, non-terrain (`TILING ~= 1`, so no walls, water, hedges), not the player; rules = parsed
+non-text, non-terrain (`TILING ~= 1`, so no walls, water, hedges), the player included as an
+object of its kind; rules = parsed
 rules plus loose text; all; plus explore's own markers; Shift+period/comma cycle a kind within the
 category, one distinct label or all, none in rules; every category or kind switch lands on the entry nearest
 (Manhattan, ties in reading order) an anchor = the cursor before the run of switches, reset by any
