@@ -18,6 +18,15 @@ return {
 	["state.off"] = "off",
 	["state.selected"] = "selected",
 	["state.disabled"] = "disabled",
+	["state.current"] = "current",
+
+	-- Completion marks in the level, levelpack and save slot lists
+	["status.won"] = "won",
+	["status.bonus"] = "orb",
+	["status.converted"] = "converted",
+	["status.ended"] = "ended",
+	["status.done"] = "done",
+	["status.complete"] = "complete",
 
 	-- Navigation
 	["nav.position"] = "{0} of {1}",
@@ -221,11 +230,18 @@ return {
 	["menu.eraseconfirm"] = "Confirm erase",
 	["menu.start_new"] = "New game",
 	["menu.m_levelpacks"] = "Level packs",
-	["menu.playlevels"] = "Custom levels",
 	["menu.restartconfirm"] = "Confirm restart",
 	["menu.watchintro"] = "Watch intro",
 	["menu.editor_start"] = "Level editor",
 	["menu.level"] = "Level list",
 	["menu.world"] = "World",
 	["menu.name"] = "Text entry",
+
+	-- Menu items the game draws as icons, and its progress glyphs
+	["menu.page_prev"] = "previous page",
+	["menu.page_next"] = "next page",
+	["menu.page_prev5"] = "5 pages back",
+	["menu.page_next5"] = "5 pages forward",
+	["menu.time"] = "played {0}",
+	["text_entry.hint"] = "Enter confirms, Escape cancels",
 }

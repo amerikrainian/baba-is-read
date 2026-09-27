@@ -109,8 +109,38 @@ function M.original(name)
 	return originals[name] or _G[name]
 end
 
+-- The same for a function stored in a table field (a menu's `enter` in
+-- menufuncs): wrap_field(tbl, key, fn) replaces tbl[key] with a proxy calling
+-- fn(original, ...). Keyed by the table itself, so a reload re-wraps cleanly.
+local field_originals = setmetatable({}, { __mode = "k" })  -- tbl -> key -> original
+local field_wrappers = setmetatable({}, { __mode = "k" })   -- tbl -> key -> fn
+
+function M.wrap_field(tbl, key, fn, where)
+	local origs = field_originals[tbl]
+	if not origs then origs = {}; field_originals[tbl] = origs end
+	local wraps = field_wrappers[tbl]
+	if not wraps then wraps = {}; field_wrappers[tbl] = wraps end
+	if origs[key] == nil then
+		local current = tbl[key]
+		if type(current) ~= "function" then return false end
+		origs[key] = current
+		local label = "wrapper " .. tostring(where or key)
+		tbl[key] = function(...)
+			local w = field_wrappers[tbl] and field_wrappers[tbl][key]
+			if not w then return origs[key](...) end
+			local results = table.pack(pcall(w, origs[key], ...))
+			if results[1] then return table.unpack(results, 2, results.n) end
+			report(label, results[2])
+			return origs[key](...)
+		end
+	end
+	wraps[key] = fn
+	return true
+end
+
 function M.unwrap_all()
 	wrappers = {}
+	for tbl in pairs(field_wrappers) do field_wrappers[tbl] = {} end
 end
 
 -- pcall with reporting, for code that runs outside a hook (key handlers, dev commands).

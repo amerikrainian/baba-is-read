@@ -67,8 +67,16 @@ function M.items(state)
 		local _, xdim = mp(state.name, 0, y, build)
 		for x = 0, (xdim or 1) - 1 do
 			local target = mp(state.name, x, y, build)
-			if target ~= "" then out[#out + 1] = { x = x, y = y, target = target } end
+			if target ~= "" then out[#out + 1] = { x = x, y = y, target = target, n = #out + 1 } end
 		end
+	end
+	local order = overrides.menu(state.name).order
+	if order then
+		for _, it in ipairs(out) do it.rank = order(it.target) end
+		table.sort(out, function(a, b)
+			if a.rank ~= b.rank then return a.rank < b.rank end
+			return a.n < b.n
+		end)
 	end
 	return out
 end

@@ -20,7 +20,8 @@ local function open_dialog()
 	if type(editor) ~= "table" or type(menufuncs) ~= "table" then return nil end
 	local name = editor.strings[MENU]
 	local mf = menufuncs[name]
-	if not mf or mf.structure or generaldata2.values[INMENU] == 1 then return nil end
+	-- "name" is the engine's text entry, read by ui/text_entry.lua.
+	if name == "name" or not mf or mf.structure or generaldata2.values[INMENU] == 1 then return nil end
 	return name, mf
 end
 

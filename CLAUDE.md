@@ -178,7 +178,22 @@ hooks, and rules from the `features` tables.
 - `lua/baba_is_read/ui/`: `menu.lua` (`current()`, `describe(state)`, `static_text`, `title`, `tick`,
   `details`, `dump`), `menu_nav.lua` (`applies`, `active`, `items`, `index`),
   `menu_overrides.lua` (per menu: `items[id] = {kind = toggle|radio|slider|button, label = <game
-  lang key>}`, `default_kind`, `list`, `hidden_text`). `level.lua` composes the turn line, `events.lua` (attached
+  lang key>, name = <our lang key>, value = fn}`, `default_kind`, `default_value`, `list`,
+  `hidden_text`, `title` = game lang key, `quiet_focus`, `icons`, `group`, `order`; `common` items
+  for every menu, the page arrows). **Cards**: list menus (packs, custom and featured levels) draw
+  each entry as a textless button with `writetext` lines and `Hud_completionicon` objects over it;
+  `menu.lua` gives an unlabelled button the text drawn inside its box (`BUTTON_STOREDX/Y` +/-
+  `scaleX/Y` tiles, half a tile of slack below) and any button the icons inside its box, so neither
+  is static text. Every `menufuncs[*].enter` is wrapped (`hooks.wrap_field`) because the engine
+  re-runs it natively on a page turn or search: texts and icons start over, and a redraw of the open
+  menu speaks only the new static lines (the page). Buttons are looked up by function AND the
+  menu's group (`strings[BUTTONID]` = `menufuncs[name].button`): the previous menu's "return"
+  outlives a menu change by a frame. The game's progress glyphs (U+00A3 time, U+1F923 prizes, U+00A4
+  clears, `(+n)` bonus, and the custom-font variants U+1F480, U+1F608, U+1F620) are expanded by `menu.expand`. `text_entry.lua`: the
+  engine's native text input (the `name` menu; neither prompt nor typed text reach Lua): the prompt
+  is `getnamegivingtitle(editor.values[NAMETARGET])`, the code prefilled when a featured or history
+  level is picked comes from that button's id, and closing it blanks the parent's `ESCBUTTON` for
+  a few frames because the engine's Escape otherwise also presses the parent's escape button. `level.lua` composes the turn line, `events.lua` (attached
   before it) records what happened to other objects between `events.begin()` at a command or auto
   turn and `events.lines()` at `turn_end`; a `hooks.wrap` wrapper is replaced, not stacked, by a second
   wrap of the same name, and its fallback re-runs the original on error, so wrappers record BEFORE
@@ -282,8 +297,10 @@ are ours because the game draws most menus without a name.
 2. **(done)** Dev server and `tools/dev.py`.
 3. **(done)** Speech layer conventions.
 4. **(done)** Menus: announcer, list navigation for grids, sliders, toggles, radio kinds via
-   overrides, dialogs with a focus of ours and synthetic clicks, F8. Open: text entry (`name`
-   menu, `text_input_ok` hook), scrolling lists (`ALLOWSCROLL` menus such as the level list), the
+   overrides, dialogs with a focus of ours and synthetic clicks, F8. Play levels branch (packs,
+   custom/featured levels, get levels, history, slots, text entry prompts) done; the single-level
+   list and completion icons are untested (no custom levels or pack saves here). Open: the typed text
+   itself (native, invisible to Lua; the screen reader's echo covers typing), scrolling lists (`ALLOWSCROLL` menus such as the level list), the
    languages menu's radio state, whether "button" after every item stays (config `speak_roles`).
 5. **(done, first pass)** In-level core (`ui/level.lua`): level start from the `level_start` hook
    (it fires; the level identity `WORLD/CURRLEVEL` is the fallback), the player snapshot on
