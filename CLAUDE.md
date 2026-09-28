@@ -248,7 +248,8 @@ object-palette buttons; play menus have none), F6 reloads. In a grid menu the
 arrows are ours (`menu_list` layer); in a dialog the arrows, Enter and Space (`dialog` layer). In a
 level (`level` and `explore` layers, `state.in_puzzle()`): the ARROWS are the exploration cursor
 (decided: always, no mode to toggle; the player moves with the game's WASD, which the mod never
-captures), Ctrl+arrows skip a run of tiles that read the same as the cursor's and land on the first
+captures; while a "you2" rule is active the arrows are the game's, since they drive "you" and WASD
+"you2", and Shift+arrows, bound in every level, move the cursor), Ctrl+arrows skip a run of tiles that read the same as the cursor's and land on the first
 that reads differently (or the run's last tile at the edge), period/comma jump to the next/previous entry in reading order from the cursor, wrapping,
 within a category that [ and ] cycle, skipping empty ones (`level_state.CATEGORIES`: objects =
 non-text, non-terrain (`TILING ~= 1`, so no walls, water, hedges), the player included as an
