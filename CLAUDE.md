@@ -60,17 +60,33 @@ and nothing caches game state the game can be asked for live.
   area and centres it. **A minimized window drops mouse input** (and reports a 0 x 0 client), and a
   FULLSCREEN game minimizes whenever it loses focus, so develop with the game windowed
   (`[settings] fullscreen=0` in `SettingsC.txt`, or the Settings menu's toggle).
-- **The level map is a level** (`106level`, name "map", in the `baba` world; `state.is_map()` =
-  any unit with a non-empty `U_LEVELFILE`): the cursor is a unit with the `select` effect
-  (`getunitswitheffect("select", true)`), level icons are units with `strings[U_LEVELFILE]`,
+- **A map is a level; there is no "map" kind in the engine** (`106level`, name "map", in the
+  `baba` world). Every level runs the hidden base rules `text is push`, `level is stop`, `cursor
+  is select` (`load.lua` `setupbaserules`); `mapcursor_load` creates a `cursor` object at the level
+  file's `selectorX/Y` when both are > 0; `select` is an ordinary property (`text_select`,
+  `text_cursor` exist in the editor palette). One key press runs `movecommand`: every `you` unit
+  moves, then `mapcursor_move` moves every `select` unit the same way, whatever the player number
+  (so WASD move the map cursor too), from its OWN tile and only onto a visible, living object with
+  `COMPLETED > 1` (paths included; push/stop do not apply; still/locked/reverse do). The engine's
+  own "is there a cursor" test is `cursorcheck()`; `leveltype=1` in the .ld marks maps but the Lua
+  reads it only for the editor and `MAPLEVEL`. The cursor is `getunitswitheffect("select", true)`,
+  the main one `generaldata4.values[MAINCURSOR]`. Level icons are units with `strings[U_LEVELFILE]`,
   `[U_LEVELNAME]` and `values[COMPLETED]` (0 hidden and invisible, 1 visible but locked, 2 open,
-  3 completed), path segments are special `path` objects, not units, found through
-  `findallhere(x, y, exclude, true)` / `MF_findpaths(x, y)`, invisible while closed. The engine
-  moves the cursor (`mapcursor_move`) onto a tile only if it holds a visible, living object with
-  `COMPLETED > 1`; `mapcursor_enter` starts the level under the cursor; `mapcursor_hardset(levelid)`
-  is the engine's own way to place the cursor on a level icon and is what the level list uses.
-  The map has rules of its own (`baba is you`, `flag is win` lie on it) and no `you` unit, so the
-  in-level announcer must stand down there (`state.in_puzzle()`).
+  3 completed): usually `level` objects, but a level's `[specials]` `level,<file>,...` hands a file
+  to whatever ordinary object stands there (Depths has Babas, a rock and a flag carrying levels), and
+  conversions keep the file (`convert.lua`: "level is baba" inside a level turns its icon on the
+  parent map into a Baba). Path segments are special `path` objects, not units, found through
+  `findallhere(x, y, exclude, true)` / `MF_findpaths(x, y)`, invisible while closed (the main map
+  draws its paths as `line` units). `mapcursor_enter` needs a select unit on a unit with a level file,
+  a name and `COMPLETED > 1`; walking a `you` unit onto an icon enters nothing. The main map has
+  `baba is you`, `flag is win` in pushable text and no `you` unit; late maps have both a player and
+  a cursor (Depths: Babas and rules, the cursor in a five-tile island of icons; Meta: no player
+  object at the start, rules about the cursor and the level), and the map itself is an icon inside
+  `???` (200level), inside `Null` (338level, which holds "the end"). So the mod never asks "map or
+  puzzle": `level_state` has `has_player()`, `has_cursor()`, `cursor_only()` (the world map's case),
+  `cursor_level()` (a cursor now or a selector in the file: who announces the level start) and the
+  icons (`levels()`, `is_icon`, `icon_label`, `status_key`, `level_entries`, `reachable`, `gates`,
+  `hints`, `path_at`), and each feature asks for what it needs.
 - **In a level**: `units`, `unitmap[x + y*roomsizex]` (fixed ids per tile), a unit's
   `strings[UNITNAME]`, `values[XPOS]`, `[YPOS]`, `[DIR]`; the parsed rules in `features` / `featureindex`
   / `visualfeatures` (`{ {target, verb, effect}, conds, ids, tags }`, `addoption` in `rules.lua`);
@@ -163,7 +179,9 @@ hooks, and rules from the `features` tables.
   listed at its top; add to `bridge.lua`'s `EXPORTS` too), `luastack.h` the layout access,
   `speech.c` Prism through `GetProcAddress` (no import lib), `log.c`, `keycap.c` the window
   subclass (capture set, event queue `vk | mods<<8 | down<<12 | repeat<<13`, synthetic keys by
-  `PostMessage`, pretend focus, release of engine-held keys on real focus loss) with `iat.c`
+  `PostMessage`, forwarded keys that pass the capture (`baba_forward_key`: lParam bit 25, reserved
+  by Windows, marks them and is cleared on the way to SDL), pretend focus, release of engine-held
+  keys on real focus loss) with `iat.c`
   hooking the exe's USER32 imports, `devserver.c` the loopback HTTP server and the eval command
   channel (chunk written to `cmd\<id>.lua`, id handed to Lua, reply text back through `baba_dev_reply`).
 - `lua/baba_is_read/`: `main.lua` (start, the per-frame tick on the `always` hook: input, dev, menu;
@@ -242,38 +260,43 @@ each action id once with every key, shadowed keys dropped; rows "label, keys, n 
 handler on the next tick; the `help` layer is exclusive (`input.layer(name, active, {exclusive=true})`:
 swallows every unbound key and captures every vk from the game, so the game stands still under it).
 The game's own keys follow (`ui/game_keys.lua`): the settings' `[keyboard]` SDL keycodes mapped to
-vks, per screen (puzzle, map, grid menu, dialog, credits), keys the mod's active layers take left out,
+vks, per screen (puzzle, map, hybrid = a map with a player, grid menu, dialog, credits), keys the mod's active layers take left out,
 run by `bridge.post_key` (down now, up next tick; an OPTIONAL export, nil on an older DLL) or in a
 puzzle by the game's `command(name)`. A binding's `opts.when` says whether it does anything now: the
 help lists it only then, and the handler no-ops silently (no "no marker" style feedback; decided).
 F8 the focused item's tooltip (the game sets `BUTTONTOOLTIP` only on editor toolbar, quick-menu and
 object-palette buttons; play menus have none), F6 reloads. In a grid menu the
-arrows are ours (`menu_list` layer); in a dialog the arrows, Enter and Space (`dialog` layer). In a
-level (`level` and `explore` layers, `state.in_puzzle()`): the ARROWS are the exploration cursor
-(decided: always, no mode to toggle; the player moves with the game's WASD, which the mod never
-captures; while a "you2" rule is active the arrows are the game's, since they drive "you" and WASD
-"you2", and Shift+arrows, bound in every level, move the cursor), Ctrl+arrows skip a run of tiles that read the same as the cursor's and land on the first
+arrows are ours (`menu_list` layer); in a dialog the arrows, Enter and Space (`dialog` layer). In
+EVERY level, the world map and the other maps included (`level` and `explore` layers,
+`state.in_level()`; decided, one scheme everywhere): the ARROWS are the reading cursor, always, no
+mode to toggle; the game's WASD (its second key set) move the player, and on a map the game's
+cursor, and are never captured; IJKL press the game's FIRST key set (the arrows by default: player
+one, "you", and the map cursor) through `bridge.forward_key`, mirroring press, auto-repeat and
+release so the game's own repeat, input queue and undo apply (`level.lua`; forwarded keys still
+held when the level ends are released). With a "you2" rule IJKL drive "you" and WASD "you2", as the
+game's arrows and WASD do. Ctrl+arrows skip a run of tiles that read the same as the cursor's and land on the first
 that reads differently (or the run's last tile at the edge), period/comma jump to the next/previous entry in reading order from the cursor, wrapping,
-within a category that [ and ] cycle, skipping empty ones (`level_state.CATEGORIES`: objects =
-non-text, non-terrain (`TILING ~= 1`, so no walls, water, hedges), the player included as an
-object of its kind; rules = parsed
-rules plus loose text; all; plus explore's own markers; Shift+period/comma cycle a kind within the
-category, one distinct label or all, none in rules; every category or kind switch lands on the entry nearest
+within a category that [ and ] cycle, skipping empty ones (`explore.lua` CATEGORIES: objects =
+non-text, non-terrain (`TILING ~= 1`, so no walls, water, hedges), the player and the map cursor
+included as objects of their kind, `level` icons left out but an ordinary object carrying a level
+kept; levels = every visible icon with its status; rules = parsed rules plus loose text; markers;
+all = everything plus closed gates and control hints); Shift+period/comma cycle a kind within the
+category, one distinct label or all, none in rules; in levels the kinds are the statuses (open,
+completed, unreachable = open or completed but out of the map cursor's reach by the engine's
+passability, locked; decided), and an entry read within its kind leaves that kind's word out
+("unreachable" is said only under "all kinds"); every category or kind switch lands on the entry nearest
 (Manhattan, ties in reading order) an anchor = the cursor before the run of switches, reset by any
-other cursor move, in levels and on the map, so switching back and forth is stable), slash places "marker n" on the cursor's
+other cursor move, so switching back and forth is stable), slash places "marker n" on the cursor's
 tile (per level, in memory for the session; Shift+slash clears the tile's, Ctrl+Shift+slash all;
-a marker is read as tile contents and stops the skip), Home parks the cursor on the player, F the facing of the cursor tile's objects (only those whose
+a marker is read as tile contents and stops the skip), Home parks the cursor on the player, or on
+the map cursor without one (the cursor follows the same unit as it moves), F the facing of the cursor tile's objects (only those whose
 sprite shows it, `level_state.shows_facing`: tiling 0, 2, 3; hidden facing stays hidden, parity
-with sighted play, decided), C the player's coordinates alone, T the rules, H where you are, L the object counts. On the
-world map (`map` layer, `state.is_map()`): the arrows are the GAME's and walk its cursor, every tile
-spoken; period/comma are a reading cursor over the map with categories levels, rules, all, and Home
-returns it to the game cursor, C the game cursor's coordinates alone; L opens the level
-list (`map_list` layer: Up/Down, Enter, Escape or L), H the progress counters. **Decided: the
-game's map cursor is moved by the mod only through the list, and only onto a reachable open
-level** (BFS over passable tiles from where it stands, the engine's own passability rule): the map
-cursor is game state, and placing it anywhere else steps over closed gates and solves the maps that
-are puzzles of their own (secret levels sit at odd spots you must walk to). Nothing else is bound;
-Space stays the game's outside dialogs.
+with sighted play, decided), C the player's coordinates alone (the map cursor's without a player), T the rules,
+H where you are and, on a map, the progress counters (the counters alone without a player), N the object counts (in the editor too).
+**Decided: the mod never moves the game's map cursor** (no level list, no jump: if the game has no
+such feature, neither does the mod); the map cursor is game state, walked with WASD or IJKL like a
+sighted player walks it, and period/comma over the levels category cover finding a level.
+Nothing else is bound; Space stays the game's outside dialogs.
 
 **Announcements are terse**: the shape of the line carries the meaning. A move is "col, row[,
 contents]", never "moved to"; a blocked move "blocked, wall"; a rule change "new: rock is win" /
@@ -337,9 +360,14 @@ are ours because the game draws most menus without a name.
    {...})`): the text lands on the objects standing on the special's tile. The main world has no
    in-level signs at all; the 70 `sign_lang` specials are the Museum's developer commentary, and the
    main map's specials are `controls` hints (not yet spoken). Open: the map (see 6).
-6. **(done, first pass)** Level map (`ui/map.lua`): entry line with open/locked/completed counts,
-   every cursor tile spoken (level and status, or the directions that continue), the level list
-   with reachable-first ordering and the engine-placed jump, period/comma reading cursor with categories;
+6. **(done, first pass)** Level map (`ui/map.lua` for what is the map's own, the rest shared with
+   levels through `level_state`, `level.lua` and `explore.lua`): entry line with open/locked/completed
+   counts (on a map with a player, after the level's own start lines), on a map without a player
+   every cursor tile spoken (level and status, or the directions that continue) and "no path"; with a
+   player the cursor is read after the turn line only when it moved ("cursor, 11, 8, level,
+   status", also on undo; `events.lua` leaves select units out of "moved"); the reading cursor
+   with a levels category; tile readouts name icons (with the carrying object's name), paths, gates,
+   hints anywhere;
    level numbers (`getlevelid`, numbered styles only), **locked icons named by their id alone**
    (`locked_label`: the custom id is the area's icon word, "Mountain"; the level name is what the
    game shows only when the cursor can stand there, `COMPLETED > 1`, so speaking it early leaks), bonus marks (save `<world>_bonus`, unverified),
@@ -347,11 +375,14 @@ are ours because the game draws most menus without a name.
    object, `COMPLETED` 1 closed), control hints (`[specials]` `controls,<key>` read from the level
    file, worded with the game's `idle`/`move`/direction strings), progress (save `<world>_prize/
    _clears/_bonus` totals against `MF_read("world","general","prize_max"...)`), a diff against the
-   last visit on re-entry, "Map clear!" from an `unlockeffect` wrapper. Open: the
-   `enterlevel_multiple` chooser, sub-maps (each numbered area is a map of its own).
-7. **(done, first pass)** Exploration cursor (`ui/explore.lua`): the arrows in every level, parked
-   on the player at level start. Open: distance and direction from the player in readouts, jump by
-   object kind, a "what is around me" summary.
+   last visit on re-entry, "Map clear!" from an `unlockeffect` wrapper. Verified with a scene in a
+   scratch custom level (Baba, rules, a cursor, icons, a flag carrying a level, created in test play
+   through the eval channel) and read-only on the world map. Open: the `enterlevel_multiple` chooser,
+   sub-maps (each numbered area is a map of its own), Depths and Meta themselves (not reached in the
+   save), a unit that is both "you" and "select" (moves twice per key, per the code; one line).
+7. **(done, first pass)** Exploration cursor (`ui/explore.lua`): the arrows in every level and on
+   every map, parked on the player (or the map cursor) at level start. Open: distance and direction
+   from the player in readouts, a "what is around me" summary.
 8. **(done)** Credits (`ui/credits.lua`): the engine screen (`editor.strings[MENU] == "credits"`, no
    `menufuncs` entry, `INMENU` 0) feeds each line through the Lua `creditstext(text, id)`; a wrapper
    speaks it on arrival, `#key` tokens expanded with the game's `langtext` as `writetext` does.
