@@ -60,13 +60,11 @@ end
 
 -- Flattened items of the open menu, in reading order: { {x=, y=, target=}, ... }
 function M.items(state)
-	local mp = hooks.original("menu_position")
-	local build = generaldata.strings[BUILD]
 	local out = {}
 	for y = 0, state.ydim - 1 do
-		local _, xdim = mp(state.name, 0, y, build)
+		local _, xdim = menu.locate(state.name, 0, y)
 		for x = 0, (xdim or 1) - 1 do
-			local target = mp(state.name, x, y, build)
+			local target = menu.locate(state.name, x, y)
 			if target ~= "" then out[#out + 1] = { x = x, y = y, target = target, n = #out + 1 } end
 		end
 	end
@@ -86,10 +84,8 @@ function M.applies(state)
 	local ov = overrides.menu(state.name)
 	if ov.list ~= nil then return ov.list end
 	if #M.virtual_rows(state.name) > 0 then return true end
-	local mp = hooks.original("menu_position")
-	local build = generaldata.strings[BUILD]
 	for y = 0, state.ydim - 1 do
-		local _, xdim = mp(state.name, 0, y, build)
+		local _, xdim = menu.locate(state.name, 0, y)
 		if (xdim or 1) > 1 then return true end
 	end
 	return false

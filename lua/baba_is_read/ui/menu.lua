@@ -21,7 +21,17 @@
 -- it and completion icons beside them. The text drawn inside an unlabelled
 -- button's box is that button's label, not the menu's static text, and the
 -- icons inside any button's box are its state.
+--
+-- Tutorials: the editor's tutorials are slideshows drawn over whatever menu
+-- is open underneath, with a grid of their own (tutodata[id][slide].structure,
+-- read by tutomenu_position) that the engine navigates instead of the menu's.
+-- While one runs, the open "menu" is TUTORIAL_MENU (its text and buttons are the
+-- "tutorial" group) and each slide is a page: a new slide is announced like a
+-- new menu. text_tuto word-wraps a paragraph into lines; each paragraph is
+-- recorded whole.
 local M = {}
+
+local TUTORIAL_MENU = "tutorial"
 
 local mods, speech, i18n, hooks, config, input, log, overrides
 
@@ -30,6 +40,7 @@ local texts = {}          -- menu name -> { {text=, x=, y=}, ... } static text d
 local icons = {}          -- menu name -> { fixed, ... } completion icons created by its enter
 local gen = {}            -- menu name -> how many times its enter has run (a page turn re-runs it)
 local entering = nil      -- the menu whose enter is running
+local paragraph = nil     -- lines collected while text_tuto runs
 
 local function record_text(menu, text, x, y)
 	local list = texts[menu]
@@ -40,10 +51,30 @@ end
 -- Wraps the game functions that draw and switch menus.
 local function install_wrappers()
 	hooks.wrap("writetext", function(orig, text_, owner, xoffset, yoffset, type_, ...)
-		if (owner == 0 or owner == nil) and type(type_) == "string" and type_ ~= "" then
+		if paragraph and type_ == TUTORIAL_MENU then
+			paragraph[#paragraph + 1] = { text = speech.clean(text_), x = tonumber(xoffset) or 0, y = tonumber(yoffset) or 0 }
+		elseif (owner == 0 or owner == nil) and type(type_) == "string" and type_ ~= "" then
 			record_text(type_, text_, xoffset, yoffset)
 		end
 		return orig(text_, owner, xoffset, yoffset, type_, ...)
+	end)
+	hooks.wrap("text_tuto", function(orig, ...)
+		local outer = paragraph
+		paragraph = {}
+		local r = table.pack(pcall(orig, ...))
+		local lines = paragraph
+		paragraph = outer
+		if #lines > 0 then
+			local parts = {}
+			for _, l in ipairs(lines) do parts[#parts + 1] = l.text end
+			record_text(TUTORIAL_MENU, table.concat(parts, " "), lines[1].x, lines[1].y)
+		end
+		if not r[1] then error(r[2], 0) end
+		return table.unpack(r, 2, r.n)
+	end)
+	hooks.wrap("MF_letterclear", function(orig, group, ...)
+		if type(group) == "string" then texts[group] = {} end
+		return orig(group, ...)
 	end)
 	hooks.wrap("changemenu", function(orig, menuitem, extra)
 		texts[menuitem] = {}
@@ -107,13 +138,47 @@ function M.expand(text)
 	return speech.join(parts)
 end
 
+-- The running tutorial: its id, slide name and data, or nil.
+local function tutorial()
+	if type(editor4) ~= "table" or editor4.values[EDITOR_TUTORIAL] ~= 1 or type(tutodata) ~= "table" then return nil end
+	local id, slide = editor4.strings[TUTORIAL], editor4.strings[TUTORIALSLIDE]
+	local t = tutodata[id]
+	local s = t and t[slide]
+	if type(s) ~= "table" or not s.structure then return nil end
+	return id, slide, t
+end
+
+function M.in_tutorial()
+	return tutorial() ~= nil
+end
+
+-- The button group (BUTTONID) of a menu's buttons.
+local function group_of(name)
+	if name == TUTORIAL_MENU then return TUTORIAL_MENU end
+	local mf = type(menufuncs) == "table" and name and menufuncs[name]
+	return mf and mf.button or nil
+end
+
+-- menu_position for any open menu, the tutorial included: target, xdim, ydim.
+function M.locate(name, x, y)
+	local build = generaldata.strings[BUILD]
+	if name == TUTORIAL_MENU then
+		local id, slide = tutorial()
+		if not id then return "", 0, 0 end
+		local target, xdim, ydim = tutomenu_position(id, slide, x, y, build)
+		return target, xdim, ydim
+	end
+	local target, xdim, ydim = hooks.original("menu_position")(name, x, y, build)
+	return target, xdim, ydim
+end
+
 -- The open menu's buttons with their boxes, in the logical coordinates
 -- writetext uses (the stored position: a sliding menu moves `x`).
 local function boxes(name)
 	local out = {}
-	local mf = type(menufuncs) == "table" and menufuncs[name]
-	if not mf or not mf.button or type(MF_getbuttongroup) ~= "function" then return out end
-	local ok, ids = pcall(MF_getbuttongroup, mf.button)
+	local group = group_of(name)
+	if not group or type(MF_getbuttongroup) ~= "function" then return out end
+	local ok, ids = pcall(MF_getbuttongroup, group)
 	if not ok or type(ids) ~= "table" then return out end
 	local tile = f_tilesize or 24
 	for _, id in ipairs(ids) do
@@ -221,19 +286,22 @@ end
 -- Reads the current menu and cursor; nil when no grid menu is open.
 function M.current()
 	if type(editor) ~= "table" or type(menufuncs) ~= "table" then return nil end
-	local name = editor.strings[MENU]
-	local mf = menufuncs[name]
-	if not mf or not mf.structure or generaldata2.values[INMENU] ~= 1 then return nil end
+	local _, slide = tutorial()
+	local name = slide and TUTORIAL_MENU or editor.strings[MENU]
+	if not slide then
+		local mf = menufuncs[name]
+		if not mf or not mf.structure then return nil end
+	end
+	if generaldata2.values[INMENU] ~= 1 then return nil end
 	local x = editor2.values[MENU_XPOS]
 	local y = editor2.values[MENU_YPOS]
-	if type(menusetx) == "function" then
+	if not slide and type(menusetx) == "function" then
 		local ok, cx = pcall(menusetx)
 		if ok and type(cx) == "number" then x = cx end
 	end
-	local build = generaldata.strings[BUILD]
-	local ok, target, xdim, ydim = pcall(hooks.original("menu_position"), name, x, y, build)
+	local ok, target, xdim, ydim = pcall(M.locate, name, x, y)
 	if not ok then return nil end
-	local state = { name = name, x = x, y = y, xdim = xdim or 0, ydim = ydim or 0, target = target or "" }
+	local state = { name = name, page = slide, x = x, y = y, xdim = xdim or 0, ydim = ydim or 0, target = target or "" }
 	if mods.menu_nav then state.virtual = mods.menu_nav.virtual_focus(name) end
 	return state
 end
@@ -247,8 +315,7 @@ local function find_objects(target, name)
 	if target == "" or type(MF_getbutton) ~= "function" then return nil, nil end
 	local ok, ids = pcall(MF_getbutton, target)
 	if not ok or type(ids) ~= "table" then return nil, nil end
-	local mf = type(menufuncs) == "table" and name and menufuncs[name]
-	local group = mf and mf.button
+	local group = group_of(name)
 	local fallback = nil
 	for _, id in ipairs(ids) do
 		local o = mmf.newObject(id)
@@ -284,6 +351,8 @@ function M.describe(state, with_position)
 	local label = ""
 	if button then label = M.expand(speech.clean(button.strings[BUTTONTEXT])) end
 	if label == "" and lay.texts[state.target] then label = card_label(lay.texts[state.target]) end
+	-- The editor's level list buttons (Editor_levelbutton) carry the level's name, drawn only on hover.
+	if label == "" and button then label = speech.clean(button.strings[BUTTONNAME]) end
 	if label == "" and ov.label then label = i18n.game(ov.label) end
 	if label == "" and ov.name then label = i18n.t(ov.name) end
 	label = label:gsub(":%s*$", "")
@@ -359,6 +428,16 @@ function M.static_text(name)
 end
 
 function M.title(name)
+	if name == TUTORIAL_MENU then
+		local _, slide, t = tutorial()
+		local count = 0
+		for k in pairs(t or {}) do
+			if tostring(k):match("^slide%d+$") then count = count + 1 end
+		end
+		local n = tonumber(tostring(slide or ""):match("%d+"))
+		if n and count > 0 then return i18n.t("menu.tutorial", n, count) end
+		return nil
+	end
 	local game_key = overrides.menu(name).title
 	if game_key then
 		local text = speech.clean(i18n.game(game_key))
@@ -387,8 +466,9 @@ end
 local function remember(state, key, value, group, static)
 	local same = last and last.name == state.name
 	M.last_focus = { name = state.name, target = state.target }
+	local page = state.page
 	last = { name = state.name, target = state.target, x = state.x, y = state.y, key = key, value = value,
-		vrow = state.virtual and state.virtual.row or nil, group = group,
+		vrow = state.virtual and state.virtual.row or nil, group = group, page = page,
 		gen = gen[state.name], static = static or (same and last.static) or {} }
 end
 
@@ -446,7 +526,7 @@ function M.tick(frame)
 		last = nil
 		return
 	end
-	if not last or last.name ~= state.name then
+	if not last or last.name ~= state.name or last.page ~= state.page then
 		announce_entry(state)
 		return
 	end
@@ -495,13 +575,11 @@ function M.dump()
 	if not state then return { menu = editor and editor.strings[MENU], inmenu = generaldata2 and generaldata2.values[INMENU] } end
 	local out = { state = state, focus = M.describe(state, true), text = M.static_text(state.name), rows = {},
 		virtual = mods.menu_nav and mods.menu_nav.virtual_rows(state.name) or {} }
-	local mp = hooks.original("menu_position")
-	local build = generaldata.strings[BUILD]
 	for y = 0, state.ydim - 1 do
 		local row = {}
-		local _, xdim = mp(state.name, 0, y, build)
+		local _, xdim = M.locate(state.name, 0, y)
 		for x = 0, (xdim or 1) - 1 do
-			local target = mp(state.name, x, y, build)
+			local target = M.locate(state.name, x, y)
 			row[#row + 1] = target .. " = " .. M.describe({ name = state.name, x = x, y = y, xdim = xdim, ydim = state.ydim, target = target }, false)
 		end
 		out.rows[#out.rows + 1] = row

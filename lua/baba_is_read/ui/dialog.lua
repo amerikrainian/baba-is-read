@@ -18,6 +18,7 @@ local focus = 0
 
 local function open_dialog()
 	if type(editor) ~= "table" or type(menufuncs) ~= "table" then return nil end
+	if menu.in_tutorial() then return nil end   -- a tutorial slide over the dialog is ui/menu's
 	local name = editor.strings[MENU]
 	local mf = menufuncs[name]
 	-- "name" is the engine's text entry, read by ui/text_entry.lua.

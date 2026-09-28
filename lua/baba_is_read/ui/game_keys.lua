@@ -94,6 +94,7 @@ local function context()
 	if menu == "credits" then return "credits" end
 	if state.in_puzzle() then return "puzzle" end
 	if state.in_level() and state.is_map() then return "map" end
+	if type(editor4) == "table" and editor4.values[EDITOR_TUTORIAL] == 1 and generaldata2.values[INMENU] == 1 then return "menu" end
 	if type(menufuncs) == "table" and menufuncs[menu] then
 		if generaldata2.values[INMENU] == 1 then return "menu" end
 		if not menufuncs[menu].structure then return "dialog" end

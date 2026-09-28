@@ -15,6 +15,8 @@
 - Text entry (slot names, searches, level codes) speaks the game's prompt, and the code already filled in when you pick a featured or history level.
 - Escape in text entry no longer also backs out of the menu underneath it.
 - Fixed returning to a menu sometimes reading the previous menu's button (e.g. "Nevermind" for Return).
+- The level editor's tutorials are read: slide number, each paragraph whole, and the Continue/Skip buttons.
+- The editor's level list names its levels instead of "unnamed item".
 
 ## V0.0.1
 

@@ -193,7 +193,13 @@ hooks, and rules from the `features` tables.
   engine's native text input (the `name` menu; neither prompt nor typed text reach Lua): the prompt
   is `getnamegivingtitle(editor.values[NAMETARGET])`, the code prefilled when a featured or history
   level is picked comes from that button's id, and closing it blanks the parent's `ESCBUTTON` for
-  a few frames because the engine's Escape otherwise also presses the parent's escape button. `level.lua` composes the turn line, `events.lua` (attached
+  a few frames because the engine's Escape otherwise also presses the parent's escape button. **Editor
+  tutorials** (`tutodata`, `Editor\editor_tutorial.lua`) are a slideshow with its own grid
+  (`tutodata[id][slide].structure`, `tutomenu_position`) whatever `editor.strings[MENU]` says
+  (`tutorial_<id>`, or a real menu the slide opened underneath): `menu.current()` checks
+  `editor4.values[EDITOR_TUTORIAL]` first and reports the menu "tutorial" with the slide as its
+  `page`; its buttons and text are the "tutorial" group; `text_tuto` paragraphs are recorded whole.
+  `menu.locate(name, x, y)` is the menu_position for any menu, the tutorial included. `level.lua` composes the turn line, `events.lua` (attached
   before it) records what happened to other objects between `events.begin()` at a command or auto
   turn and `events.lines()` at `turn_end`; a `hooks.wrap` wrapper is replaced, not stacked, by a second
   wrap of the same name, and its fallback re-runs the original on error, so wrappers record BEFORE

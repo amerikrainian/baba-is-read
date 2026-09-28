@@ -236,6 +236,7 @@ return {
 	["menu.level"] = "Level list",
 	["menu.world"] = "World",
 	["menu.name"] = "Text entry",
+	["menu.tutorial"] = "Tutorial, slide {0} of {1}",
 
 	-- Menu items the game draws as icons, and its progress glyphs
 	["menu.page_prev"] = "previous page",
