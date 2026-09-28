@@ -18,7 +18,7 @@ local EXPORTS = {
 }
 -- Exports a DLL may lack (added later than the running build): bound when
 -- present, nil otherwise, so an older DLL still loads.
-local OPTIONAL = { "baba_post_key" }
+local OPTIONAL = { "baba_post_key", "baba_forward_key" }
 
 M.loaded = false
 M.error = nil

@@ -15,6 +15,7 @@
 //   baba_click(x, y, right, phase) -> boolean: a mouse click at client coordinates (phase 1 press, 2 release, 0 both)
 //   baba_client_size()             -> width << 16 | height of the window's client area
 //   baba_post_key(vk, down)        -> boolean: a synthetic key through the game window (the key help's game rows)
+//   baba_forward_key(vk, state)    -> boolean: a key to the engine past the capture (0 up, 1 down, 2 repeat)
 //   baba_dev_start(port)           -> boolean
 //   baba_dev_poll()                -> pending command id or 0
 //   baba_dev_reply(id, text)       -> nothing
@@ -94,6 +95,11 @@ EXPORT int baba_client_size(void *L) { ba_push_int(L, ba_keycap_client_size()); 
 
 EXPORT int baba_post_key(void *L) {
     ba_push_bool(L, ba_keycap_post((int)ba_arg_int(L, 1, 0), (int)ba_arg_int(L, 2, 1)));
+    return 1;
+}
+
+EXPORT int baba_forward_key(void *L) {
+    ba_push_bool(L, ba_keycap_forward((int)ba_arg_int(L, 1, 0), (int)ba_arg_int(L, 2, 1)));
     return 1;
 }
 

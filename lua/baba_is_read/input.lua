@@ -130,7 +130,9 @@ function M.layer(name, active, opts)
 end
 
 -- bind(layer, spec, id, handler, opts): handler(event) runs on key down;
--- opts.repeat_ok = true also runs it on auto-repeat; opts.hidden = true
+-- opts.repeat_ok = true also runs it on auto-repeat; opts.up = function(event)
+-- runs on the key's release (whatever modifiers are held by then, so a
+-- held key is always let go); opts.hidden = true
 -- keeps the key out of the help (one of many keys doing one thing, listed
 -- once under another); opts.when = function()
 -- says whether the key does anything right now (the help lists it only
@@ -183,9 +185,11 @@ function M.live()
 	return out, taken
 end
 
--- Runs a listed action as a press of its key would.
+-- Runs a listed action as a press of its key would. The event says
+-- `press = true`: no release will follow, so a handler that holds something
+-- down while its key is held lets go by itself.
 function M.press(row)
-	hooks.guard("press " .. row.id, row.handler, { vk = row.vk, mods = row.mods, ["repeat"] = false })
+	hooks.guard("press " .. row.id, row.handler, { vk = row.vk, mods = row.mods, ["repeat"] = false, press = true })
 end
 
 function M.unbind_all()
@@ -198,7 +202,21 @@ local function dispatch(ev)
 	local mods = (ev >> 8) & 0xf
 	local down = (ev >> 12) & 1 == 1
 	local rep = (ev >> 13) & 1 == 1
-	if not down then return end
+	if not down then
+		for i = #layers, 1, -1 do
+			local l = layers[i]
+			if l.active() then
+				for _, b in pairs(l.binds) do
+					if b.vk == vk and b.opts.up then
+						hooks.guard("key up " .. b.spec .. " (" .. b.id .. ")", b.opts.up, { vk = vk, mods = mods })
+						return
+					end
+				end
+				if l.exclusive then return end
+			end
+		end
+		return
+	end
 	local key = vk .. ":" .. mods
 	for i = #layers, 1, -1 do
 		local l = layers[i]

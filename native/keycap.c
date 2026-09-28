@@ -13,6 +13,12 @@
 // posted so event-driven code sees it too. Counters per entry point show which
 // path the engine actually uses (see ba_keycap_stats).
 //
+// A forwarded key (ba_keycap_forward) is one the mod hands to the engine even
+// though it may be captured: its message carries PASS_BIT in the lParam, a bit
+// Windows reserves and never sets, and the window procedure lets it through
+// with the bit cleared. The mod's second movement keys use it to press the
+// game's own first set, which the mod captures for its reading cursor.
+//
 // Event packing (one integer): vk | mods << 8 | down << 12 | repeat << 13
 //   mods: 1 = shift, 2 = control, 4 = alt
 #include "common.h"
@@ -213,12 +219,19 @@ static void release_engine_keys(void) {
     }
 }
 
+#define PASS_BIT ((LPARAM)1 << 25)
+
 static LRESULT CALLBACK ba_wndproc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     switch (msg) {
     case WM_KEYDOWN: case WM_SYSKEYDOWN: case WM_KEYUP: case WM_SYSKEYUP: {
         InterlockedIncrement(&g_calls_wndproc_keys);
         int vk = (int)(wp & 0xff);
         int down = (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN) ? 1 : 0;
+        if (lp & PASS_BIT) {
+            // Forwarded by the mod: straight to the engine, whatever the capture says.
+            g_engine_down[vk] = (unsigned char)down;
+            return CallWindowProcW(g_orig_proc, hwnd, msg, wp, lp & ~PASS_BIT);
+        }
         int mods = current_mods();
         // A release is taken whenever any combination of the key is captured, so a
         // chord's release never reaches the engine as a stray key-up.
@@ -305,6 +318,19 @@ int ba_keycap_post(int vk, int down) {
     if (is_extended(vk)) lp |= (LPARAM)1 << 24;
     if (!down) lp |= ((LPARAM)1 << 30) | ((LPARAM)1 << 31);
     return PostMessageW(g_hwnd, down ? WM_KEYDOWN : WM_KEYUP, (WPARAM)vk, lp) ? 1 : 0;
+}
+
+// A key handed to the engine past the capture: state 0 release, 1 press,
+// 2 an auto-repeat press (the previous-state bit set, as Windows sends it
+// while a key is held). Only messages: the engine takes keys from nothing else.
+int ba_keycap_forward(int vk, int state) {
+    if (!g_hwnd || vk < 1 || vk > 255) return 0;
+    UINT scan = MapVirtualKeyW((UINT)vk, MAPVK_VK_TO_VSC);
+    LPARAM lp = 1 | ((LPARAM)(scan & 0xff) << 16) | PASS_BIT;
+    if (is_extended(vk)) lp |= (LPARAM)1 << 24;
+    if (state == 2) lp |= (LPARAM)1 << 30;
+    if (state == 0) lp |= ((LPARAM)1 << 30) | ((LPARAM)1 << 31);
+    return PostMessageW(g_hwnd, state ? WM_KEYDOWN : WM_KEYUP, (WPARAM)vk, lp) ? 1 : 0;
 }
 
 // One line of diagnostics: how often each keyboard path has been used.

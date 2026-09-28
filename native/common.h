@@ -32,6 +32,7 @@ void ba_keycap_set(int vk, int mask); // mask: bit (1 << mods) per captured modi
 int ba_keycap_get(int vk);
 int ba_keycap_poll(void); // packed event or 0
 int ba_keycap_post(int vk, int down); // synthetic key through the game window
+int ba_keycap_forward(int vk, int state); // a key to the engine past the capture: 0 up, 1 down, 2 repeat
 HWND ba_keycap_hwnd(void);
 void ba_keycap_stats(char *buf, size_t cap);
 void ba_keycap_pretend_focus(int on);
