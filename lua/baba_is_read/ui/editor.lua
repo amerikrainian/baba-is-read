@@ -19,7 +19,7 @@
 --   C / X          copy / cut the object here as the current object
 --   O, Shift+O     the current object; swap it with its word
 --   period/comma   the next / previous tile with something on it
---   F, H, T, L     facings here, where you are, the text lines, counts
+--   F, H, T, N     facings here, where you are, the text lines, counts
 --   P              the palette as a list (letters jump, Enter picks,
 --                  Shift+E opens the game's object editor for the entry)
 --   F2             level settings (the game's F1 is the key help's)
@@ -747,7 +747,7 @@ function M.attach(m)
 	input.bind("editor", "f", "editor.facing", facings)
 	input.bind("editor", "h", "editor.where", where)
 	input.bind("editor", "t", "editor.text", text_lines)
-	input.bind("editor", "l", "editor.census", census)
+	input.bind("editor", "n", "editor.census", census)
 	input.bind("editor", "p", "editor.palette", palette_open)
 	input.bind("editor", "F2", "editor.settings", settings)
 	input.bind("editor", "ctrl+enter", "editor.flood", flood)

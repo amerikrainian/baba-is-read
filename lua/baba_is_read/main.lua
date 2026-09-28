@@ -48,6 +48,7 @@ local frame = 0
 
 local function tick(extra)
 	frame = frame + 1
+	mods.level_state.tick()
 	mods.input.tick()
 	mods.dev.tick()
 	mods.menu.tick(frame)

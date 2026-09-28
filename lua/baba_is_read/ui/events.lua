@@ -119,7 +119,7 @@ end
 
 -- A turn starts: remember where everything is and forget the last turn's events.
 function M.begin()
-	if not state.in_puzzle() then return end
+	if not state.in_level() then return end
 	watching = true
 	snap = snapshot()
 	pushed, pulled, reasons, destroyed, converted, made, steps, you_moves = {}, {}, {}, {}, {}, {}, {}, {}
@@ -136,11 +136,16 @@ function M.lines()
 
 	local you = {}
 	for _, u in ipairs(state.you_units()) do you[u.fixed] = true end
+	-- The map cursors walk on their own after the players (mapcursor_move);
+	-- level.lua reads the cursor's move, or map.lua where there is no player.
+	local cursors = {}
+	for _, u in ipairs(state.select_units()) do cursors[u.fixed] = true end
 	-- Every visible unit that moved, the player included (a swap pairs them).
 	local movers = {}
 	for _, u in ipairs(units or {}) do
 		local s = snap[u.fixed]
-		if s and state.is_visible(u) and (u.values[XPOS] ~= s.x or u.values[YPOS] ~= s.y) then
+		if s and not (cursors[u.fixed] and not you[u.fixed]) and state.is_visible(u)
+			and (u.values[XPOS] ~= s.x or u.values[YPOS] ~= s.y) then
 			movers[#movers + 1] = { u = u, fx = s.x, fy = s.y, tx = u.values[XPOS], ty = u.values[YPOS] }
 		end
 	end

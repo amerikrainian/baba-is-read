@@ -1,26 +1,32 @@
 -- Exploration cursor: the arrows read the level while the player stays put.
 --
--- In a level the arrow keys (and Shift+arrows, which stay ours in a level
--- with a "you2", whose "you" the arrows drive) are ours and step a cursor over the tiles, each
--- step speaking "col, row[, contents]"; the game's own WASD move the player and
--- are never captured. On the world map the arrows stay the game's (see
--- map.lua). Period and comma jump to the next and previous entry of the
--- current category in reading order from the cursor, wrapping around (a
--- parsed rule is one entry, landing on its first word); [ and ] switch the
--- category (objects, rules, markers, all; see CATEGORIES below), skipping
--- any category with nothing in it. The player is an entry of its kind like
--- any other object. Within a category, Shift+period and
--- Shift+comma cycle the kind: "all", then every distinct name present
--- (skull, rock, flag, ...), and period/comma then jump among that kind only;
--- a category switch resets the kind. The rules category has no kinds: the
--- keys do nothing there. A category or kind switch lands on the entry
+-- In every level, the world map and the other maps included, the arrow keys
+-- are ours and step a cursor over the tiles, each step speaking "col, row[,
+-- contents]" (level icons with their status, paths, gates and hints
+-- included). The game's own WASD move the player, and on a map the game's
+-- cursor, and are never captured; the arrows' own game meaning, the first
+-- player's moves, is on IJKL (level.lua). Period and comma jump to the next
+-- and previous entry of the current category in reading order from the
+-- cursor, wrapping around (a parsed rule is one entry, landing on its first
+-- word); [ and ] switch the category (objects, levels, rules, markers, all;
+-- see CATEGORIES below), skipping any category with nothing in it. The
+-- player is an entry of its kind like any other object, and so is the
+-- game's map cursor. Within a category, Shift+period and Shift+comma cycle
+-- the kind: "all", then every distinct name present (skull, rock, flag,
+-- ...), and period/comma then jump among that kind only; a category switch
+-- resets the kind. In the levels category the kinds are the statuses (open,
+-- completed, unreachable: open or completed but out of the map cursor's
+-- reach, locked), and an entry read within its kind leaves that kind's word
+-- out. The rules category has no kinds: the keys do nothing there. A category or kind switch lands on the entry
 -- nearest (Manhattan distance, ties in reading order, the cursor's own tile
 -- allowed) to an anchor: where the cursor stood before the first switch of a
 -- run, so switching back and forth is stable; any other cursor movement
 -- moves the anchor with it. Ctrl+arrows skip a run of identical
 -- tiles: the cursor lands on the first tile in that direction whose contents
 -- differ from the tile it stands on, or on the last tile of the run when the
--- run reaches the edge. Home returns the cursor to the player.
+-- run reaches the edge. Home returns the cursor to the player, or to the
+-- game's map cursor where there is no player; the cursor follows the same
+-- one as it moves.
 --
 -- F reads the facing of what stands on the cursor's tile, "baba, right",
 -- for objects whose sprite shows it (level_state.shows_facing), the way a
@@ -46,10 +52,10 @@ local markers = {}       -- level key -> { list = { {x=, y=, n=}, ... }, next = 
 
 -- The reading categories in [ ] order: the level's own (level_state) plus
 -- the markers.
-local CATEGORIES = { "objects", "rules", "markers", "all" }
+local CATEGORIES = { "objects", "levels", "rules", "markers", "all" }
 
 local function level_key()
-	return tostring(generaldata.strings[WORLD]) .. "/" .. tostring(generaldata.strings[CURRLEVEL])
+	return state.level_key()
 end
 
 local function marker_store()
@@ -90,8 +96,13 @@ local function say_tile(prefix)
 	speech.speak(table.concat(parts, ", "), true)
 end
 
+-- What the cursor parks on and follows: the player, else the game's map cursor.
+local function home_unit()
+	return state.you_units()[1] or state.cursor_unit()
+end
+
 local function park_on_player()
-	local u = state.you_units()[1]
+	local u = home_unit()
 	if u then cx, cy = u.values[XPOS], u.values[YPOS]; last_you = cx .. "," .. cy end
 	jump_index, anchor = 0, nil
 end
@@ -131,19 +142,31 @@ local function skip(dx, dy)
 	say_tile()
 end
 
--- The entries of a category in reading order: the level's (level_state) with
--- the markers added for "all", the markers alone for "markers". The player
+-- The entries of a category in reading order: the level's (level_state),
+-- the level icons for "levels", the markers for "markers", and for "all"
+-- every one of them plus the closed gates and the control hints. The player
 -- is an object of its kind like any other (six pillars under "pillar is you"
 -- are six pillar entries), so period/comma and the kind cycle reach it.
 local function entries_for(cat)
 	local out = {}
-	if cat ~= "markers" then
+	if cat == "objects" or cat == "rules" or cat == "all" then
 		out = state.reading_entries(nil, cat)
+	end
+	if cat == "levels" or cat == "all" then
+		for _, e in ipairs(state.level_entries()) do out[#out + 1] = e end
+	end
+	if cat == "all" then
+		for _, g in ipairs(state.gates()) do
+			if not g.open then out[#out + 1] = { x = g.x, y = g.y, label = i18n.t("map.gate", g.need) } end
+		end
+		for _, h in ipairs(state.hints()) do out[#out + 1] = { x = h.x, y = h.y, label = h.label } end
 	end
 	if cat == "markers" or cat == "all" then
 		for _, m in ipairs(marker_store().list) do
 			out[#out + 1] = { x = m.x, y = m.y, label = marker_label(m) }
 		end
+	end
+	if cat == "all" then
 		table.sort(out, function(a, b)
 			if a.y ~= b.y then return a.y < b.y end
 			if a.x ~= b.x then return a.x < b.x end
@@ -153,15 +176,27 @@ local function entries_for(cat)
 	return out
 end
 
--- The distinct labels in the current category, alphabetically, with counts.
+-- An entry's kind for Shift+period/comma: its own (the level statuses) or
+-- its label.
+local function kind_of(e) return e.kind or e.label end
+
+-- The distinct kinds in the current category with counts and spoken names,
+-- in rank order (the level statuses), alphabetically otherwise.
 local function kinds_now()
-	local counts, names = {}, {}
+	local counts, names, spoken, rank = {}, {}, {}, {}
 	for _, e in ipairs(entries_for(CATEGORIES[category])) do
-		if not counts[e.label] then counts[e.label] = 0; names[#names + 1] = e.label end
-		counts[e.label] = counts[e.label] + 1
+		local k = kind_of(e)
+		if not counts[k] then
+			counts[k] = 0; names[#names + 1] = k
+			spoken[k], rank[k] = e.kind_name or e.label, e.rank or 0
+		end
+		counts[k] = counts[k] + 1
 	end
-	table.sort(names)
-	return names, counts
+	table.sort(names, function(a, b)
+		if rank[a] ~= rank[b] then return rank[a] < rank[b] end
+		return a < b
+	end)
+	return names, counts, spoken
 end
 
 -- The entries period and comma move over: the category's, or those of the
@@ -171,9 +206,14 @@ local function entries_now()
 	if not kind then return all end
 	local out = {}
 	for _, e in ipairs(all) do
-		if e.label == kind then out[#out + 1] = e end
+		if kind_of(e) == kind then out[#out + 1] = e end
 	end
 	return out
+end
+
+-- An entry as read: within a chosen kind, without that kind's own word.
+local function entry_label(e)
+	return kind and e.kind_label or e.label
 end
 
 -- Moves the cursor to the next (or previous) entry and returns its line.
@@ -193,7 +233,7 @@ local function jump_line(delta)
 	local e = entries[jump_index]
 	cx, cy = e.x, e.y
 	anchor = nil
-	return speech.join({ state.pos_text(cx, cy), e.label })
+	return speech.join({ state.pos_text(cx, cy), entry_label(e) })
 end
 
 -- After a category or kind switch: the cursor lands on the entry nearest the
@@ -210,7 +250,7 @@ local function land_line()
 	jump_index = bi
 	local e = entries[bi]
 	cx, cy = e.x, e.y
-	return speech.join({ state.pos_text(cx, cy), e.label })
+	return speech.join({ state.pos_text(cx, cy), entry_label(e) })
 end
 
 local function jump(delta)
@@ -242,7 +282,7 @@ end
 -- the entry of it nearest the anchor.
 local function switch_kind(delta)
 	if CATEGORIES[category] == "rules" then return end
-	local names, counts = kinds_now()
+	local names, counts, spoken = kinds_now()
 	if #names == 0 then speech.speak(i18n.t("level.no_objects"), true); return end
 	local n = #names + 1   -- slot 1 is "all kinds"
 	local i = 1
@@ -259,7 +299,7 @@ local function switch_kind(delta)
 		header = i18n.t("cat.switched", i18n.t("kind.all"), #entries_for(CATEGORIES[category]))
 	else
 		kind = names[i - 1]
-		header = i18n.t("cat.switched", kind, counts[kind])
+		header = i18n.t("cat.switched", spoken[kind], counts[kind])
 	end
 	speech.speak_lines({ header, land_line() })
 end
@@ -327,15 +367,16 @@ end
 function M.cursor() return cx, cy end
 
 function M.tick()
-	if not state.in_puzzle() then parked_for = nil; return end
+	if not state.in_level() then parked_for = nil; return end
 	local key = level_key()
 	if key ~= parked_for then
 		parked_for = key
 		park_on_player()
 		return
 	end
-	-- Follow the player: after a move (or an undo) the cursor is where they are.
-	local u = state.you_units()[1]
+	-- Follow the player (or the map cursor): after a move (or an undo) the
+	-- cursor is where they are.
+	local u = home_unit()
 	if u then
 		local now = u.values[XPOS] .. "," .. u.values[YPOS]
 		if now ~= last_you then
@@ -349,17 +390,11 @@ end
 function M.attach(m)
 	speech, i18n, input, state, log = m.speech, m.i18n, m.input, m.level_state, m.log
 	parked_for = nil
-	input.layer("explore", state.in_puzzle)
-	-- The arrows are the game's first key set: with a "you2" in play they
-	-- drive "you" (WASD drive "you2"), so they go back to the game then;
-	-- Shift+arrows step the cursor in every level.
-	local function two_players() return type(featureindex) == "table" and featureindex["you2"] ~= nil end
-	input.layer("explore_arrows", function() return state.in_puzzle() and not two_players() end)
+	input.layer("explore", state.in_level)
 	local rep = { repeat_ok = true }
 	for _, a in ipairs({ { "right", 1, 0 }, { "left", -1, 0 }, { "up", 0, -1 }, { "down", 0, 1 } }) do
 		local k, dx, dy = a[1], a[2], a[3]
-		input.bind("explore_arrows", k, "explore." .. k, function() step(dx, dy) end, rep)
-		input.bind("explore", "shift+" .. k, "explore." .. k, function() step(dx, dy) end, rep)
+		input.bind("explore", k, "explore." .. k, function() step(dx, dy) end, rep)
 	end
 	input.bind("explore", "ctrl+right", "explore.skip_right", function() skip(1, 0) end, rep)
 	input.bind("explore", "ctrl+left", "explore.skip_left", function() skip(-1, 0) end, rep)

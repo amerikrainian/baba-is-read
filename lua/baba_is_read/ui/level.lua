@@ -12,18 +12,35 @@
 --   sign text       -> the sign's lines when you step next to it
 --   win / undo      -> "win" / "undo, col, row"
 --   no you left     -> "no you"
+--   the map cursor  -> "cursor, col, row[, level, status]" after the turn line, when a
+--                      turn moved it in a level that also has a player (Depths, Meta):
+--                      one key moves both, and the cursor is read like any other object
+--                      that moved. A level with a cursor and no player (the world map)
+--                      is map.lua's: its cursor is spoken on every tile.
 --
 -- Terse by design: no verbs where the shape of the line already says it.
 -- Every part is its own announcement (the first interrupts, the rest queue),
 -- so a rule change, an event and the position are separate lines.
--- Keys (level layer, active in a level): T the rules, H where you are, L the
--- object counts; explore mode lives in explore.lua.
+-- Keys (level layer, active in every level, maps included): T the rules, H
+-- where you are (and the progress on a map), C the coordinates, N the object
+-- counts, IJKL the game's first movement keys (below); explore mode lives in
+-- explore.lua.
+--
+-- IJKL: the arrows are the reading cursor in every level, so the game's
+-- first key set (the arrows by default: player one, "you", and the map
+-- cursor) is pressed through I, K, J and L instead. Each press and release
+-- (auto-repeat included) is forwarded to the engine as the key the settings
+-- bind, past the mod's own capture (bridge.forward_key), so the game's own
+-- repeat, input queue and undo apply. With "you2" in play the game's second
+-- set, WASD, drives "you2" as usual.
 local M = {}
 
 local mods, speech, i18n, hooks, input, config, log, state, events
 
 local pending = {}        -- lines to flush ahead of the next turn line
-local before = nil        -- { key = <command>, you = { [fixed] = {x, y, name} } } from command_given
+local before = nil        -- { key = <command>, you = { [fixed] = {x, y, name} }, cursor = {fixed, x, y} } from command_given
+local held = {}           -- game vk -> true: forwarded presses not yet released
+local cursor_seen = nil   -- the map cursor after the last announced turn, for the undo line
 local known_rules = nil   -- set of rule strings at the last announcement
 local announce_start = false
 local undo_delay = nil    -- frames to wait before speaking an undo (rules re-parse after the hook)
@@ -60,14 +77,15 @@ local function rule_changes()
 	return out
 end
 
-local function flush(line, interrupt)
+local function flush(line, interrupt, after)
 	local parts = {}
-	if state.in_puzzle() then
+	if state.in_level() then
 		for _, p in ipairs(rule_changes()) do parts[#parts + 1] = p end
 	end
 	for _, p in ipairs(pending) do parts[#parts + 1] = p end
 	pending = {}
 	if line and line ~= "" then parts[#parts + 1] = line end
+	if after and after ~= "" then parts[#parts + 1] = after end
 	speech.speak_lines(parts, interrupt)
 end
 
@@ -112,41 +130,80 @@ local function name_lines()
 	return out
 end
 
--- One announcement per line: the name (interrupting), each rule on its own,
--- then where you are, so a reader can step through them.
-function M.announce_level()
+-- The level's start lines: the name, each rule on its own, then where you
+-- are, then any sign in view. Resets the rule baseline. map.lua puts these
+-- ahead of its own lines on a map that has a player.
+function M.entry_lines()
 	local lines = name_lines()
 	for _, r in ipairs(state.rules()) do lines[#lines + 1] = r end
 	lines[#lines + 1] = where_line(true)
 	for _, l in ipairs(events.sign_lines()) do lines[#lines + 1] = l end
 	pending = {}
 	known_rules = rules_set()
-	speech.speak_lines(lines)
+	return lines
 end
 
+-- One announcement per line: the name (interrupting), each rule on its own,
+-- then where you are, so a reader can step through them.
+function M.announce_level()
+	speech.speak_lines(M.entry_lines())
+end
+
+local function cursor_snapshot()
+	local c = state.cursor_unit()
+	if not c then return nil end
+	return { fixed = c.fixed, x = c.values[XPOS], y = c.values[YPOS] }
+end
 
 local function on_command(extra)
-	if not state.in_puzzle() then return end
-	before = { key = extra and extra[1], player = extra and extra[2], you = you_snapshot() }
+	if not state.in_level() then return end
+	before = { key = extra and extra[1], player = extra and extra[2], you = you_snapshot(), cursor = cursor_snapshot() }
 	events.begin()
 end
 
 -- "level is auto": the level takes a turn on its own.
 local function on_auto()
-	if not state.in_puzzle() then return end
-	before = { auto = true, you = you_snapshot() }
+	if not state.in_level() then return end
+	before = { auto = true, you = you_snapshot(), cursor = cursor_snapshot() }
 	events.begin()
 end
 
+-- The map cursor's line after a turn that moved it, in a level with a
+-- player: "cursor, col, row[, level, status]". Nothing when it stayed, when it
+-- is itself a player unit (that unit's line covers it), or without one.
+local function cursor_line(snap_cursor, you)
+	local c = state.cursor_unit()
+	if not c or not snap_cursor or c.fixed ~= snap_cursor.fixed then return nil end
+	local x, y = c.values[XPOS], c.values[YPOS]
+	if x == snap_cursor.x and y == snap_cursor.y then return nil end
+	for _, u in ipairs(you) do
+		if u.fixed == c.fixed then return nil end
+	end
+	local parts = { state.name_of(c), state.pos_text(x, y) }
+	local l = state.level_at(x, y)
+	if l then
+		parts[#parts + 1] = state.icon_label(l)
+		parts[#parts + 1] = state.status_text(l)
+	end
+	return speech.join(parts)
+end
+
 local function on_turn_end(extra)
-	if not state.in_puzzle() then return end
+	if not state.in_level() then return end
 	local key = before and before.key
 	local player = before and before.player
 	local auto = before and before.auto
 	local snap = before and before.you or {}
+	local snap_cursor = before and before.cursor
 	before = nil
 	for _, l in ipairs(events.lines()) do pending[#pending + 1] = l end
 	local you = state.you_units()
+	-- No player before or after, and a cursor: the world map's kind of turn,
+	-- whose cursor map.lua reads.
+	if #you == 0 and next(snap) == nil and state.has_cursor() then
+		if #pending > 0 then flush(nil, false) end
+		return
+	end
 	if #you == 0 then flush(i18n.t("level.no_you"), true); return end
 	-- The units this command drives: player 2 (the game's second key set
 	-- while there is a "you2") moves "you2", player 1 "you". The line is the
@@ -201,7 +258,8 @@ local function on_turn_end(extra)
 		line = ahead ~= "" and i18n.t("level.blocked_by", ahead) or i18n.t("level.blocked")
 	end
 	line = with_facing(line)
-	flush(line, true)
+	flush(line, true, cursor_line(snap_cursor, you))
+	cursor_seen = cursor_snapshot()
 	for _, s in ipairs(events.sign_lines()) do speech.speak(s, false) end
 	if win_wait then win_wait = nil; speech.speak(i18n.t("level.win"), false) end
 end
@@ -209,14 +267,57 @@ end
 -- The undo hook fires before the game re-parses the rules, so the line waits
 -- two frames for who is "you" to be right again.
 local function on_undo()
-	if not state.in_puzzle() then return end
+	if not state.in_level() then return end
 	undo_delay = 2
+end
+
+-- ---- IJKL: the game's first movement keys ----
+
+local IJKL = { i = "up", j = "left", k = "down", l = "right" }
+local ARROW_VK = { up = 38, left = 37, down = 40, right = 39 }
+local warned_forward = false
+local auto_release = nil   -- { action =, ticks = }: a key-help press, released after a few frames
+
+-- The virtual key the settings bind to the first set's action (arrows by default).
+local function game_vk(action)
+	local gk = mods.game_keys
+	return (gk and gk.first_vk and gk.first_vk(action)) or ARROW_VK[action]
+end
+
+local function forward(action, state_)
+	local bridge = mods.bridge
+	if not (bridge and bridge.forward_key) then
+		if not warned_forward then
+			warned_forward = true
+			log.warn("level: IJKL need the forward_key export (an older DLL is loaded)")
+		end
+		return
+	end
+	local vk = game_vk(action)
+	if not vk then return end
+	bridge.forward_key(vk, state_)
+	held[vk] = state_ ~= 0 or nil
+end
+
+-- Lets go of every forwarded key the engine still holds: the level ended or
+-- a menu opened while one was down, so its own release will not come here.
+local function release_held()
+	local bridge = mods.bridge
+	for vk in pairs(held) do
+		if bridge and bridge.forward_key then bridge.forward_key(vk, 0) end
+	end
+	held = {}
 end
 
 -- A level is announced only when the game's level_start hook has fired; the
 -- data is already the new level's at that point. Menus opening and closing
 -- over a level, and the transition frames, never re-announce it.
 function M.tick()
+	if next(held) and not state.in_level() then release_held() end
+	if auto_release then
+		auto_release.ticks = auto_release.ticks - 1
+		if auto_release.ticks <= 0 then forward(auto_release.action, 0); auto_release = nil end
+	end
 	if win_wait then
 		win_wait = win_wait - 1
 		if win_wait <= 0 then win_wait = nil; speech.speak(i18n.t("level.win"), false) end
@@ -225,12 +326,20 @@ function M.tick()
 		undo_delay = undo_delay - 1
 		if undo_delay <= 0 then
 			undo_delay = nil
-			if state.in_puzzle() then flush(i18n.t("level.undo_at", where_line(false)), true) end
+			if state.in_level() and not state.cursor_only() then
+				flush(i18n.t("level.undo_at", where_line(false)), true, cursor_line(cursor_seen, state.you_units()))
+			end
+			cursor_seen = cursor_snapshot()
 		end
 	end
 	if not announce_start or not state.level_loaded() then return end
 	announce_start = false
-	if state.is_map() then return end -- the map module announces maps
+	pending = {}
+	known_rules = rules_set()
+	cursor_seen = cursor_snapshot()
+	-- A level with a map cursor is announced by map.lua, with these lines
+	-- first when it has a player.
+	if state.cursor_level() then return end
 	M.announce_level()
 end
 
@@ -241,17 +350,23 @@ function M.say_rules()
 	speech.speak_lines(rules)
 end
 
--- C: the player's coordinates alone, "col, row".
+-- C: the player's coordinates alone, "col, row"; the map cursor's where
+-- there is no player.
 function M.say_coords()
 	if not state.in_level() then speech.speak(i18n.t("level.none"), true); return end
-	local u = state.you_units()[1]
+	local u = state.you_units()[1] or state.cursor_unit()
 	if not u then speech.speak(i18n.t("level.no_you"), true); return end
 	speech.speak(state.pos_text(u.values[XPOS], u.values[YPOS]), true)
 end
 
+-- H: where the player is, then the progress counters on a map; the counters
+-- alone on a map without a player.
 function M.say_where()
 	if not state.in_level() then speech.speak(i18n.t("level.none"), true); return end
-	speech.speak(where_line(true), true)
+	local lines = {}
+	if state.has_player() or not state.has_cursor() then lines[#lines + 1] = where_line(true) end
+	if state.has_cursor() and #state.levels() > 0 and mods.map then lines[#lines + 1] = mods.map.progress_line() end
+	speech.speak_lines(lines)
 end
 
 function M.say_census()
@@ -265,7 +380,8 @@ function M.attach(m)
 	mods = m
 	speech, i18n, hooks, input, config, log, state, events = m.speech, m.i18n, m.hooks, m.input, m.config, m.log, m.level_state, m.events
 	pending, before, known_rules, announce_start, undo_delay, win_wait = {}, nil, nil, false, nil, nil
-	if state.in_puzzle() then known_rules = rules_set() end
+	held, warned_forward, auto_release = {}, false, nil
+	if state.in_level() then known_rules = rules_set() end
 
 	hooks.on("level_start", "level.start", function() announce_start = true end)
 	hooks.on("command_given", "level.command", on_command)
@@ -273,13 +389,22 @@ function M.attach(m)
 	hooks.on("turn_end", "level.turn", on_turn_end)
 	hooks.on("undoed_after", "level.undo", on_undo)
 	-- The win comes after its turn's lines (the hook fires before turn_end).
-	hooks.on("level_win", "level.win", function() if state.in_puzzle() then win_wait = 3 end end)
+	hooks.on("level_win", "level.win", function() if state.in_level() then win_wait = 3 end end)
 
-	input.layer("level", state.in_puzzle)
+	input.layer("level", state.in_level)
 	input.bind("level", "t", "level.rules", M.say_rules)
 	input.bind("level", "h", "level.where", M.say_where)
 	input.bind("level", "c", "level.coords", M.say_coords)
-	input.bind("level", "l", "level.census", M.say_census)
+	input.bind("level", "n", "level.census", M.say_census)
+	for _, k in ipairs({ "i", "j", "k", "l" }) do
+		local action = IJKL[k]
+		input.bind("level", k, "level.move_" .. action, function(ev)
+			forward(action, ev["repeat"] and 2 or 1)
+			-- From the key help: no release comes, so one is made, held long
+			-- enough for the engine to see the press (as game_keys does).
+			if ev.press then auto_release = { action = action, ticks = 3 } end
+		end, { repeat_ok = true, up = function() forward(action, 0) end })
+	end
 end
 
 return M

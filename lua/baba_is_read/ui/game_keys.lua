@@ -6,9 +6,10 @@
 -- "settings"/"keyboard": right, right2, up, ..., idle, undo, confirm, restart,
 -- pause; the "2" names are the alternates). Escape is not rebindable and
 -- always backs out or pauses. A key the mod captures in the current layers
--- (the arrows in a level) is left out of the game's row, since the game never
+-- (the arrows in every level) is left out of the game's row, since the game never
 -- sees it there. Which actions apply is by screen: a puzzle (move, wait, undo,
--- restart, pause), the map (cursor, enter the level, pause), a grid menu
+-- restart, pause), the map (cursor, enter the level, pause), a map with a
+-- player (both: its keys move the player and the cursor), a grid menu
 -- (navigate, activate, back), a dialog (back), the credits (leave).
 --
 -- A row's action posts the key to the game through the bridge (down now, up
@@ -65,13 +66,29 @@ local function bound_vks(action)
 	return out
 end
 
--- The actions per screen, in listing order, with the label key.
+-- The key the settings bind to an action's first set (the arrows by default
+-- for the moves), nil when none reads; IJKL press it (level.lua).
+function M.first_vk(action)
+	if type(MF_read) ~= "function" then return nil end
+	local ok, code = pcall(MF_read, "settings", "keyboard", action)
+	return ok and sdl_to_vk(code) or nil
+end
+
+-- The actions per screen, in listing order, with the label key. "hybrid" is a
+-- level with both a player and a map cursor: one key moves both.
 local CONTEXTS = {
 	puzzle = {
 		{ "right", "help.game.level.right" }, { "left", "help.game.level.left" },
 		{ "up", "help.game.level.up" }, { "down", "help.game.level.down" },
 		{ "idle", "help.game.level.idle" }, { "undo", "help.game.level.undo" },
 		{ "restart", "help.game.level.restart" }, { "pause", "help.game.level.pause", 27 },
+	},
+	hybrid = {
+		{ "right", "help.game.level.right" }, { "left", "help.game.level.left" },
+		{ "up", "help.game.level.up" }, { "down", "help.game.level.down" },
+		{ "idle", "help.game.level.idle" }, { "confirm", "help.game.map.confirm" },
+		{ "undo", "help.game.level.undo" }, { "restart", "help.game.level.restart" },
+		{ "pause", "help.game.level.pause", 27 },
 	},
 	map = {
 		{ "right", "help.game.map.right" }, { "left", "help.game.map.left" },
@@ -92,8 +109,11 @@ local function context()
 	if type(editor) ~= "table" then return nil end
 	local menu = editor.strings[MENU]
 	if menu == "credits" then return "credits" end
-	if state.in_puzzle() then return "puzzle" end
-	if state.in_level() and state.is_map() then return "map" end
+	if state.in_level() then
+		if state.cursor_only() then return "map" end
+		if state.has_cursor() then return "hybrid" end
+		return "puzzle"
+	end
 	if menu == "editor" and not (type(editor4) == "table" and editor4.values[EDITOR_TUTORIAL] == 1) then return "editor" end
 	if type(editor4) == "table" and editor4.values[EDITOR_TUTORIAL] == 1 and generaldata2.values[INMENU] == 1 then return "menu" end
 	if type(menufuncs) == "table" and menufuncs[menu] then
