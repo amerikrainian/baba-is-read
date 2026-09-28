@@ -20,7 +20,8 @@
 --   O, Shift+O     the current object; swap it with its word
 --   period/comma   the next / previous tile with something on it
 --   F, H, T, L     facings here, where you are, the text lines, counts
---   P              the palette as a list
+--   P              the palette as a list (letters jump, Enter picks,
+--                  Shift+E opens the game's object editor for the entry)
 --   F2             level settings (the game's F1 is the key help's)
 --   Ctrl+Enter     flood fill from here with the current object
 --
@@ -514,7 +515,7 @@ end
 function M.palette_entries()
 	local out = {}
 	for _, v in ipairs(type(editor_currobjlist) == "table" and editor_currobjlist or {}) do
-		out[#out + 1] = { object = v.object, label = menu.object_name(v.name), tile = v.tile }
+		out[#out + 1] = { object = v.object, name = v.name, label = menu.object_name(v.name), tile = v.tile }
 	end
 	return out
 end
@@ -569,6 +570,13 @@ local function palette_choose()
 	local e = M.palette_entries()[palette.index]
 	palette = nil
 	if e then M.pick(e) end
+end
+
+-- E: the game's object editor for the entry (its Return comes back here).
+local function palette_edit()
+	local e = M.palette_entries()[palette.index]
+	palette = nil
+	if e then submenu("objectedit", e.name) end
 end
 
 local function palette_close()
@@ -662,17 +670,6 @@ function M.attach(m)
 		return table.unpack(r, 1, r.n)
 	end)
 
-	-- The palette menu (Tab) reads its objects as a row of ours; Enter picks.
-	menu_nav.provide("currobjlist", function()
-		local list = M.palette_entries()
-		local items = {}
-		for _, e in ipairs(list) do items[#items + 1] = e.label end
-		return { { label = i18n.t("editor.palette"), items = items, activate = function(i)
-			local e = M.palette_entries()[i]
-			if e then M.pick(e) end
-		end } }
-	end)
-
 	local function editing() return M.active() and palette == nil and last ~= nil and here_key == level_key() end
 	input.layer("editor", editing)
 	local rep = { repeat_ok = true }
@@ -725,6 +722,7 @@ function M.attach(m)
 	input.bind("editor_palette", "end", "editor.palette_last", function() palette_move(0, "last") end)
 	input.bind("editor_palette", "enter", "editor.palette_choose", palette_choose)
 	input.bind("editor_palette", "escape", "editor.palette_close", palette_close)
+	input.bind("editor_palette", "shift+e", "editor.palette_edit", palette_edit)
 	input.bind("editor_palette", "p", "editor.palette_close", palette_close)
 	for i = 0, 25 do
 		local ch = string.char(97 + i)

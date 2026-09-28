@@ -17,6 +17,8 @@
 --   list = true or false to force list navigation on or off (menu_nav)
 -- and per menu:
 --   default_kind, default_value = kind and value for items without an entry
+--   kind_of = function(id) returning a kind, for items without an entry
+--   (items may also carry text = <our lang key>, replacing the game's text)
 --   title =a key in the game's language files, the menu's title
 --   quiet_focus = true to leave the focused item out of the entry line
 --   icons = "level" or "pack" (the default): what the completion icons mean
@@ -168,6 +170,45 @@ M.menus = {
 			return nil
 		end,
 	},
+	-- The object editor: the object's name line is drawn in a group of its own.
+	objectedit = {
+		title = function(i18n, menu)
+			local info = menu.texts_of("objectinfo")[1]
+			return info and i18n.t("menu.objectedit", info.text) or nil
+		end,
+		items = {
+			type_obj = { kind = "radio" }, type_txt = { kind = "radio" }, type = { kind = "radio" },
+			a1 = { kind = "radio" }, a2 = { kind = "radio" }, a3 = { kind = "radio" },
+			a4 = { kind = "radio" }, a5 = { kind = "radio" }, a6 = { kind = "radio" },
+			-- The text types are shown as an example word each.
+			w1 = { kind = "radio", text = "menu.wordtype_noun" }, w2 = { kind = "radio", text = "menu.wordtype_verb" },
+			w3 = { kind = "radio", text = "menu.wordtype_property" }, w4 = { kind = "radio", text = "menu.wordtype_prefix" },
+			w5 = { kind = "radio", text = "menu.wordtype_condition" }, w6 = { kind = "radio", text = "menu.wordtype_letter" },
+		},
+		group = function(id, i18n)
+			if id:match("^a%d$") then return i18n.game("editor_object_animation") end
+			if id:match("^w%d$") then return i18n.game("editor_object_text_type") end
+			if id == "-" or id == "+" then return i18n.game("editor_object_text_manualtype") end
+			if id:match("^l[-+]+$") then return i18n.game("editor_object_zlevel") end
+			if id == "colour" or id == "acolour" then return i18n.game("editor_object_colour") end
+			return nil
+		end,
+	},
+	-- The sprite list: the edited object's own sprite marked.
+	spriteselect = {
+		default_value = function(id, i18n)
+			local ok, sprite = pcall(function()
+				local u = mmf.newObject(editor.values[EDITTARGET])
+				return getactualdata(u.className, "sprite")
+			end)
+			if ok and sprite and id:match("^(.-)_%d+_%d+%d*$") == sprite then return i18n.t("state.current") end
+			return nil
+		end,
+	},
+	objlist_tags = {
+
+		kind_of = function(id) return id:sub(1, 4) == "tag," and "toggle" or nil end,
+	},
 	editormenu = {
 		title = "editor_mainmenu",
 	},
@@ -189,7 +230,8 @@ function M.item(menu, id)
 	local m = M.menus[menu] or {}
 	local it = (m.items and m.items[id]) or M.common[id]
 	if it then return it end
-	if m.default_kind or m.default_value then return { kind = m.default_kind, value = m.default_value } end
+	local kind = m.kind_of and m.kind_of(id) or m.default_kind
+	if kind or m.default_value then return { kind = kind, value = m.default_value } end
 	return {}
 end
 

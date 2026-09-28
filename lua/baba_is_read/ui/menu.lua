@@ -39,6 +39,7 @@ local last = nil          -- last spoken state: { name, target, x, y, key, value
 local texts = {}          -- menu name -> { {text=, x=, y=}, ... } static text drawn on entry
 local icons = {}          -- menu name -> { fixed, ... } completion icons created by its enter
 local numbers = {}        -- menu name -> { fixed, ... } number displays created by its enter
+local specials = {}       -- menu name -> { { id =, class = }, ... } every special object its enter made
 local gen = {}            -- menu name -> how many times its enter has run (a page turn re-runs it)
 local entering = nil      -- the menu whose enter is running
 local paragraph = nil     -- lines collected while text_tuto runs
@@ -98,6 +99,11 @@ local function install_wrappers()
 	-- object editor): objects, not text, read as the value of their row.
 	hooks.wrap("MF_specialcreate", function(orig, what, ...)
 		local r = table.pack(orig(what, ...))
+		if entering then
+			local all = specials[entering]
+			if not all then all = {}; specials[entering] = all end
+			all[#all + 1] = { id = r[1], class = what }
+		end
 		if entering and (what == "Editor_counter" or what == "Editor_number") then
 			local list = numbers[entering]
 			if not list then list = {}; numbers[entering] = list end
@@ -118,6 +124,7 @@ local function wrap_enters()
 				texts[name] = {}
 				icons[name] = {}
 				numbers[name] = {}
+				specials[name] = {}
 				gen[name] = (gen[name] or 0) + 1
 				local outer = entering
 				entering = name
@@ -270,6 +277,19 @@ local function layout(name)
 	return out
 end
 
+-- The special objects of a class a menu's enter created and that still
+-- exist, as objects.
+function M.specials(name, class)
+	local out = {}
+	for _, e in ipairs(specials[name] or {}) do
+		if e.class == class and (type(MF_findfixed) ~= "function" or MF_findfixed(e.id) ~= nil) then
+			local o = mmf.newObject(e.id)
+			if o then out[#out + 1] = o end
+		end
+	end
+	return out
+end
+
 -- The number display on a button's row, nearest it: its value, or nil.
 local function row_number(name, target)
 	local list = numbers[name]
@@ -417,6 +437,7 @@ function M.describe(state, with_position)
 	local tip = button and speech.clean(button.strings[BUTTONTOOLTIP]) or ""
 	if button then label = M.expand(speech.clean(button.strings[BUTTONTEXT])) end
 	if STEPS[label] then label = i18n.t(STEPS[label]) end
+	if ov.text then label = i18n.t(ov.text) end
 	-- The editor's object lists: an index into editor_objlist (the add-object
 	-- list) or "id,name,n" (the palette), drawn as a sprite (its text, when
 	-- it has one, is the index).
@@ -424,8 +445,12 @@ function M.describe(state, with_position)
 		label = M.object_label(state.target)
 	end
 	if label == "" and lay.texts[state.target] then label = card_label(lay.texts[state.target]) end
-	-- The editor's level list buttons (Editor_levelbutton) carry the level's name, drawn only on hover.
-	if label == "" and button then label = speech.clean(button.strings[BUTTONNAME]) end
+	-- The editor's level list buttons (Editor_levelbutton) carry the level's name, drawn only on hover;
+	-- its sprite list buttons the sprite's file name, "baba_0_1" (direction and frame after the name).
+	if label == "" and button then
+		label = speech.clean(button.strings[BUTTONNAME])
+		if button.className == "Editor_spritebutton" then label = M.object_name((label:gsub("_%d+_%d+$", ""))) end
+	end
 	if label == "" and ov.label then label = i18n.game(ov.label) end
 	if label == "" and ov.name then label = i18n.t(ov.name) end
 	-- An icon button's tooltip is its name; any other button's is read last.
@@ -548,6 +573,11 @@ function M.title(name)
 		return nil
 	end
 	local game_key = overrides.menu(name).title
+	if type(game_key) == "function" then
+		local ok, text = pcall(game_key, i18n, M)
+		if ok and text and text ~= "" then return text end
+		game_key = nil
+	end
 	if game_key then
 		local text = speech.clean(i18n.game(game_key))
 		if text ~= "" then return text end

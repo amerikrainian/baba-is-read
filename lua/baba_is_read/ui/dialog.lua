@@ -90,7 +90,11 @@ local release_at = nil   -- { frame =, x =, y = } for the click's second phase
 function M.click(x, y, what)
 	if release_at then return false end
 	local cx, cy = to_client(x, y)
-	if not cx then log.warn("dialog: no client size for a click"); return false end
+	if not cx then
+		log.warn("dialog: no client size for a click")
+		speech.speak(i18n.t("app.no_window"), true)
+		return false
+	end
 	log.info("dialog: click %s at logical %d,%d client %d,%d", tostring(what or ""), math.floor(x), math.floor(y), cx, cy)
 	bridge.click(cx, cy, 0, 1)
 	release_at = { frame = frame_now + 3, x = cx, y = cy }

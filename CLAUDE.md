@@ -362,4 +362,10 @@ are ours because the game draws most menus without a name.
    focused button's row, names stepper signs ("--" is "decrease by more"), reads `row_text` menus'
    left-of-button text as the label ("Music: Baba, Change music"), names `Editor_objlistbutton`s from
    `editor_objlist` (the index is also their text); `menu_nav.provide(menu, fn)` lets a module add
-   virtual rows with `activate` (the palette menu's objects).
+   virtual rows with `activate` (the palette menu's objects). `ui/editor_menus.lua` holds those
+   rows: the palette menu's objects click their `Editor_objlistbutton` (so pick/remove/edit modes
+   are the game's); the colour picker (`Editor_colourselector`, 7 x 5, ignores synthetic clicks)
+   sets the colour through `savechange(obj, {nil, nil, "x,y"})` (active colour: 7th param) +
+   `dochanges_allinstances` + `HACK_updatethumbnailcolour` and `closemenu()`; colour names are
+   blocks.lua's coordinates. Up/Down in a menu with virtual rows step by the game's rows. A click
+   (`dialog.click`) needs the window not minimized; it says so when it is.

@@ -167,23 +167,28 @@ local function move(delta)
 end
 
 -- Up and Down: with virtual rows, each row is one stop (entered at the column
--- last focused in it) and each of the game's items another; without them,
--- the same as Left and Right.
+-- last focused in it) and so is each of the game's rows (entered at its
+-- first item: the palette menu's fifteen tool icons are one stop); without
+-- virtual rows, the same as Left and Right.
 local function move_row(delta)
 	local state = menu.current()
 	if not state then return end
 	local rows = M.virtual_rows(state.name)
 	if #rows == 0 then return move(delta) end
 	local items = M.items(state)
-	local n = #rows + #items
+	local game_rows, row_of = {}, {}
+	for _, it in ipairs(items) do
+		if not row_of[it.y] then game_rows[#game_rows + 1] = it; row_of[it.y] = #game_rows end
+	end
+	local n = #rows + #game_rows
 	if n == 0 then return end
 	local vf = M.virtual_focus(state.name)
-	local i = vf and vf.row or (#rows + (M.index(state, items) or 1))
+	local i = vf and vf.row or (#rows + (row_of[state.y] or 1))
 	i = ((i - 1 + delta) % n) + 1
 	if i <= #rows then
 		focus(state, { v = true, row = i, col = vcols[i] or 1 })
 	else
-		focus(state, items[i - #rows])
+		focus(state, game_rows[i - #rows])
 	end
 end
 
