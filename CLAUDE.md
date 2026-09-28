@@ -348,7 +348,7 @@ are ours because the game draws most menus without a name.
    `dev_enabled` defaults to true, so a release ships the loopback dev server on; restore
    `fullscreen=1` in the user's settings after a dev session (it is set to 0 for the clicks); the
    repository has no remote yet (the installer expects `amerikrainian/baba-is-read`).
-10. **(in progress)** Level editor (`ui/editor.lua` for the editing screen, the menus through
+10. **(done, first pass)** Level editor (`ui/editor.lua` for the editing screen, the menus through
    `menu_overrides`). Decided: the cursor is the mod's (the game snaps its own to the mouse every
    frame: `MF_movetileplacer` holds for one frame only, a bare WM_MOUSEMOVE does nothing); edits go
    through the game's Lua (`placetile_table`, `copytile`, `objectwordswap`, the undo recipe for a
@@ -378,3 +378,8 @@ are ours because the game draws most menus without a name.
    does not always update. A button whose text goes stale after a change (the level icon's target,
    the map setup's parent) is read live through `label_of`. Pack marks: `MF_read("world",
    "general", "start"/"firstlevel")`.
+   Open: the typed text of the engine's text entry (native); rotate/flip of a pasted copy (the
+   game's selection tool is not exposed); diagonal lines; the quickbar as a list; the palette row
+   in Remove and Edit modes, the Special brush, upload, themes and copy were not driven live; a
+   level icon's colours set through the rows are not verified to survive a save; everything was
+   driven with synthetic keys only.
