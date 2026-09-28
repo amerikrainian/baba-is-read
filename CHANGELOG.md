@@ -19,6 +19,7 @@
 - The editor's level list names its levels instead of "unnamed item".
 - Level editor, editing screen: a cursor of the mod's on the arrows reads each tile (all three layers, the current one first); Enter places the current object, Delete erases, Alt+arrows set the facing, C and X copy and cut, O and Shift+O read and swap the current object, P lists the palette, F2 opens level settings, and F, H, T, L read facings, the level state, the words in lines and the object counts. Layer changes, picks, saves and undos (with what they took back) are announced.
 - Levels: other objects that fell, swapped or were teleported say so (a fall was read as a teleport, a swap as a move); the player's line says when a belt, a teleporter or a fall moved it ("shifted, 4, 1"); objects that are done are announced; weak and open/shut destruction name their cause; an effect the mod has no word for is read with the game's name for it.
+- Levels: facing changes are announced: objects that turn in place ("turned keke up"), moving objects that turned around ("moved skull left"), and the player when a rule leaves it facing other than the way it moved ("2, 1, facing down"); only for objects whose sprite shows a facing.
 - Levels: "win" is no longer cut off by the turn's own line; walking into the level's edge says "blocked, edge".
 - Levels with "you2": the arrows go to the game (they move "you", WASD move "you2"), the exploration cursor moves on Shift+arrows (in every level), and the line follows whichever player moved, by name.
 - Levels: a 3d player's line says which way it faces.

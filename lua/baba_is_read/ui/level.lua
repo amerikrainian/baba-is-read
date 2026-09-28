@@ -32,7 +32,7 @@ local win_wait = nil      -- frames left before "win" is spoken without its turn
 local function you_snapshot()
 	local snap = {}
 	for _, u in ipairs(state.you_units()) do
-		snap[u.fixed] = { x = u.values[XPOS], y = u.values[YPOS], name = state.label_of(u) }
+		snap[u.fixed] = { x = u.values[XPOS], y = u.values[YPOS], dir = u.values[DIR], name = state.label_of(u) }
 	end
 	return snap
 end
@@ -175,8 +175,19 @@ local function on_turn_end(extra)
 		if #how == 0 or not l then return l end
 		return speech.join({ table.concat(how, ", "), l })
 	end
+	-- Turned by a rule (up, turn, ...) to face other than the way it was
+	-- sent: the facing, when its sprite shows it (a 3d player says it anyway).
+	local function with_facing(l)
+		if not l or not prev or not state.shows_facing(u) then return l end
+		-- Against the way it was sent for a move, else against how it faced.
+		if dir ~= nil and dir <= 3 then
+			if u.values[DIR] == dir then return l end
+		elseif u.values[DIR] == prev.dir then return l end
+		if type(hasfeature) == "function" and hasfeature(u.strings[UNITNAME], "is", "3d", u.fixed) then return l end
+		return speech.join({ l, i18n.t("level.facing", state.facing_word(u)) })
+	end
 	if auto then
-		if moved then line = with_how(where_line(several, prev, u)) end
+		line = moved and with_how(where_line(several, prev, u)) or ""
 	elseif dir == nil or dir > 4 then
 		line = nil
 	elseif dir == 4 then
@@ -189,6 +200,7 @@ local function on_turn_end(extra)
 		local ahead = state.in_bounds(ax, ay) and state.describe_tile(ax, ay, u) or i18n.t("level.edge")
 		line = ahead ~= "" and i18n.t("level.blocked_by", ahead) or i18n.t("level.blocked")
 	end
+	line = with_facing(line)
 	flush(line, true)
 	for _, s in ipairs(events.sign_lines()) do speech.speak(s, false) end
 	if win_wait then win_wait = nil; speech.speak(i18n.t("level.win"), false) end

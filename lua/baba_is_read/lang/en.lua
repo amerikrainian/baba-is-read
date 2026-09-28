@@ -64,6 +64,9 @@ return {
 	["move.teleported"] = "teleported", ["move.fell"] = "fell", ["move.shifted"] = "shifted",
 	["move.fled"] = "fled", ["move.moved"] = "moved", ["move.swapped"] = "swapped",
 	["level.swapped"] = "swapped {0}",
+	["level.turned"] = "turned {0} {1}",     -- names, direction: "turned keke up"
+	["level.facing"] = "facing {0}",
+	["level.name_facing"] = "{0} {1}",     -- a moved object that turned: "skull left"
 	-- Undo record kinds read by name ("level.undo.<kind>"); a mod's may be added.
 	["level.undo.done"] = "{0} done",
 	["level.sank"] = "sank {0}",

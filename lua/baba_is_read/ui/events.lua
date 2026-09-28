@@ -13,6 +13,10 @@
 --                  fallblock ran), by the movement_take hook's reason (shift
 --                  is "shifted", fear "fled", any other reason with a
 --                  "level.<reason>" string of its own, e.g. a mod's), moved
+--   turned         a unit whose facing changed without moving (the same
+--                  update records carry the old and new facing), for units
+--                  whose sprite shows it (level_state.shows_facing); a unit
+--                  that moved faces the way it went, which its line implies
 --   destroyed      a wrapper on delete; the cause is the effect the game
 --                  named through checkeffecthistory at that tile (it bursts
 --                  particles there right after, MF_particles), before or
@@ -177,9 +181,26 @@ function M.lines()
 			else kind = "moved" end
 			if not groups[kind] then groups[kind] = {}; kinds[#kinds + 1] = kind end
 			-- Pushed and pulled text goes by its word alone: "pushed flag".
-			bump(groups[kind], (kind == "pushed" or kind == "pulled") and word_of(u) or state.name_of(u))
+			local label = (kind == "pushed" or kind == "pulled") and word_of(u) or state.name_of(u)
+			-- A mover that turned around on the way (a bounce) says its new facing.
+			if st and st.dir0 ~= nil and st.dir0 ~= u.values[DIR] and state.shows_facing(u) then
+				label = i18n.t("level.name_facing", label, state.facing_word(u))
+			end
+			bump(groups[kind], label)
 		end
 	end
+	-- Turned in place: grouped by the way they face now.
+	local turned, torder = {}, {}
+	for _, u in ipairs(units or {}) do
+		local st, s = steps[u.fixed], snap[u.fixed]
+		if st and s and not you[u.fixed] and state.is_visible(u) and state.shows_facing(u)
+			and st.dir0 ~= nil and st.dir0 ~= u.values[DIR] and u.values[XPOS] == s.x and u.values[YPOS] == s.y then
+			local d = state.facing_word(u)
+			if not turned[d] then turned[d] = {}; torder[#torder + 1] = d end
+			bump(turned[d], state.name_of(u))
+		end
+	end
+
 	-- A pushed or pulled unit destroyed in the same turn (a rock pushed into
 	-- water) is gone from `units`: count it from the snapshot.
 	local present = {}
@@ -192,6 +213,7 @@ function M.lines()
 	for _, k in ipairs(kinds) do
 		if next(groups[k]) then out[#out + 1] = i18n.t("level." .. k, counted(groups[k])) end
 	end
+	for _, d in ipairs(torder) do out[#out + 1] = i18n.t("level.turned", counted(turned[d]), d) end
 
 	-- Each deletion's cause: the effect at its tile nearest in sequence, else
 	-- the effect nearest in sequence anywhere (a key opening the door next to it).
@@ -332,6 +354,8 @@ local function install()
 				steps[uid] = st
 				local dx, dy = (line[6] or 0) - (line[3] or 0), (line[7] or 0) - (line[4] or 0)
 				if math.abs(dx) + math.abs(dy) > 1 then st.jump = true end
+				if st.dir0 == nil then st.dir0 = line[5] end
+				st.dir1 = line[8]
 				if phase and (dx ~= 0 or dy ~= 0) then st.phase = phase end
 			elseif kind == "convert" then
 				converted[#converted + 1] = { from = spoken_name(line[2]), to = spoken_name(line[3]) }

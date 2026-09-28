@@ -182,7 +182,10 @@ hooks, and rules from the `features` tables.
   is the checkeffecthistory effect whose MF_particles burst is at the unit's tile (nearest in
   sequence; the game deletes before or after naming the effect depending on the path), an unknown
   effect is read by its id (`level.destroyed_by`), and any undo kind with a `level.undo.<kind>`
-  string is read with its names (`done`). The player's line takes the unit the command drove
+  string is read with its names (`done`). Facing changes (decided: announced) come from the same update
+  records' old and new DIR: turned in place ("turned keke up"), turned while moving ("moved skull
+  left"), and the player's line adds "facing x" when it ends facing other than the way it was
+  sent; only for `shows_facing` units, like F. The player's line takes the unit the command drove
   (command_given's player 2 = "you2") that moved, and says how it was moved beyond its step.
 - `lua/baba_is_read/ui/`: `menu.lua` (`current()`, `describe(state)`, `static_text`, `title`, `tick`,
   `details`, `dump`), `menu_nav.lua` (`applies`, `active`, `items`, `index`),
