@@ -313,12 +313,15 @@ function M.sentences()
 		while parent[i] ~= i do parent[i] = parent[parent[i]]; i = parent[i] end
 		return i
 	end
+	-- Keyed by the fixed id itself: ids are floats near 1e154, and tostring's
+	-- 14 digits give two different units the same text.
 	local owner = {}
 	for i, e in ipairs(entries) do
+		local by_line = owner[e.line]
+		if not by_line then by_line = {}; owner[e.line] = by_line end
 		for _, u in ipairs(e.units) do
-			local key = e.line .. ":" .. tostring(u.fixed)
-			local j = owner[key]
-			if j then parent[find(i)] = find(j) else owner[key] = i end
+			local j = by_line[u.fixed]
+			if j then parent[find(i)] = find(j) else by_line[u.fixed] = i end
 		end
 	end
 	local groups, order = {}, {}
