@@ -22,6 +22,14 @@
 --   F, H, T, L     facings here, where you are, the text lines, counts
 --   P              the palette as a list
 --   F2             level settings (the game's F1 is the key help's)
+--   Ctrl+Enter     flood fill from here with the current object
+--
+-- Rectangles: Space marks a corner; with a corner marked, moving says the
+-- rectangle's size, Space fills it with the current object, Shift+Space
+-- draws its outline, Delete erases it on the current layer, Ctrl+C copies it
+-- (all three layers) and Ctrl+X cuts it, Escape drops the corner. A line is a
+-- rectangle one tile wide. Ctrl+V pastes the last copy with its top-left
+-- corner on the cursor, over what is there on the layers it holds.
 --
 -- The game's own keys stay the game's: Tab (palette menu), Escape (level
 -- menu), F3 (test), Ctrl+S, Ctrl+Z, Ctrl+1/2/3 (layer), I, U, Y, Q (pick
@@ -38,6 +46,8 @@ local here_key = nil       -- the level the cursor belongs to while the screen i
 local last = nil           -- { layer =, pick =, dir = } as last announced
 local jump_index = 0
 local palette = nil        -- { index = } while the palette list is open
+local anchor = nil         -- { x =, y = } the marked corner of a rectangle
+local clipboard = nil      -- { w =, h =, cells = { { dx =, dy =, z =, obj =, dir = }, ... } }
 local away = false         -- the screen is under one of the editor's menus
 
 -- Screens that end an editing session: back on them, the next visit to the
@@ -124,8 +134,33 @@ local function tile_line(x, y)
 	return speech.join({ state.pos_text(x, y), tile_text(x, y) })
 end
 
+local function rect_bounds()
+	local x1, x2 = math.min(anchor.x, cx), math.max(anchor.x, cx)
+	local y1, y2 = math.min(anchor.y, cy), math.max(anchor.y, cy)
+	return x1, y1, x2, y2
+end
+
+local function rect_size()
+	local x1, y1, x2, y2 = rect_bounds()
+	return i18n.t("editor.size", x2 - x1 + 1, y2 - y1 + 1)
+end
+
+-- The tiles of the marked rectangle, or its outline.
+local function rect_tiles(hollow)
+	local x1, y1, x2, y2 = rect_bounds()
+	local out = {}
+	for y = y1, y2 do
+		for x = x1, x2 do
+			if not hollow or x == x1 or x == x2 or y == y1 or y == y2 then out[#out + 1] = { x, y } end
+		end
+	end
+	return out
+end
+
 local function say_tile()
-	speech.speak(tile_line(cx, cy), true)
+	local line = tile_line(cx, cy)
+	if anchor then line = speech.join({ line, rect_size() }) end
+	speech.speak(line, true)
 end
 
 local function remember_cursor()
@@ -237,6 +272,109 @@ local function face(d)
 		return
 	end
 	speech.speak(dir_word(d), true)
+end
+
+-- Space: the first corner, or with one marked, the filled rectangle;
+-- Shift+Space its outline.
+local function rect_fill(hollow)
+	if not anchor then
+		if hollow then return end
+		anchor = { x = cx, y = cy }
+		speech.speak(i18n.t("editor.corner", state.pos_text(cx, cy)), true)
+		return
+	end
+	local size = rect_size()
+	local obj = picked()
+	placetile_table(obj, rect_tiles(hollow), layer_now(), editor.values[EDITORDIR])
+	commit()
+	anchor = nil
+	if obj == "" then speech.speak(i18n.t("editor.rect_erased", size), true); return end
+	speech.speak(i18n.t(hollow and "editor.rect_outline" or "editor.rect_filled", object_word(obj), size), true)
+end
+
+-- Delete with a corner marked: the rectangle on the current layer.
+local function rect_erase()
+	local size = rect_size()
+	placetile_table("", rect_tiles(false), layer_now(), editor.values[EDITORDIR])
+	commit()
+	anchor = nil
+	speech.speak(i18n.t("editor.rect_erased", size), true)
+end
+
+-- Ctrl+C / Ctrl+X: the rectangle's objects on every layer, positions
+-- relative to its top-left corner.
+local function rect_copy(cut_too)
+	local x1, y1, x2, y2 = rect_bounds()
+	local cells = {}
+	for y = y1, y2 do
+		for x = x1, x2 do
+			for _, u in ipairs(units_here(x, y)) do
+				local z = u.values[LAYER]
+				if z >= 0 and z <= 2 then
+					cells[#cells + 1] = { dx = x - x1, dy = y - y1, z = z, obj = u.className, dir = u.values[DIR] }
+				end
+			end
+		end
+	end
+	local size = rect_size()
+	clipboard = { w = x2 - x1 + 1, h = y2 - y1 + 1, cells = cells }
+	if cut_too then
+		local tiles = rect_tiles(false)
+		for z = 0, 2 do placetile_table("", tiles, z, 0) end
+		commit()
+	end
+	anchor = nil
+	speech.speak(i18n.t(cut_too and "editor.rect_cut" or "editor.rect_copied", size, #cells), true)
+end
+
+-- Ctrl+V: the copy with its top-left on the cursor; what falls outside the
+-- level is left out.
+local function paste()
+	if not clipboard then speech.speak(i18n.t("editor.clipboard_empty"), true); return end
+	local groups, order = {}, {}
+	for _, c in ipairs(clipboard.cells) do
+		local x, y = cx + c.dx, cy + c.dy
+		if state.in_bounds(x, y) then
+			local key = c.obj .. "|" .. c.z .. "|" .. c.dir
+			if not groups[key] then groups[key] = { obj = c.obj, z = c.z, dir = c.dir, tiles = {} }; order[#order + 1] = key end
+			local g = groups[key]
+			g.tiles[#g.tiles + 1] = { x, y }
+		end
+	end
+	for _, key in ipairs(order) do
+		local g = groups[key]
+		placetile_table(g.obj, g.tiles, g.z, g.dir)
+	end
+	commit()
+	speech.speak(i18n.t("editor.pasted", i18n.t("editor.size", clipboard.w, clipboard.h)), true)
+end
+
+local function rect_cancel()
+	anchor = nil
+	speech.speak(i18n.t("editor.corner_dropped"), true)
+end
+
+-- Ctrl+Enter: the game's flood fill from the cursor, on the current layer.
+local function flood()
+	local obj, z = picked(), layer_now()
+	local function snapshot()
+		local out = {}
+		for y = 1, state.height() - 2 do
+			for x = 1, state.width() - 2 do
+				local u = unit_on_layer(x, y, z)
+				out[x .. "," .. y] = u and (u.className .. u.values[DIR]) or ""
+			end
+		end
+		return out
+	end
+	local before = snapshot()
+	flood_fill(obj, cx, cy, z, editor.values[EDITORDIR])
+	commit()
+	local changed = 0
+	for k, v in pairs(snapshot()) do
+		if before[k] ~= v then changed = changed + 1 end
+	end
+	speech.speak(i18n.t("editor.flooded", object_word(obj), changed), true)
 end
 
 local function current_line()
@@ -455,7 +593,7 @@ local function announce_entry()
 	here_key = level_key()
 	local c = cursors[here_key]
 	if c and state.in_bounds(c.x, c.y) then cx, cy = c.x, c.y else cx, cy = 1, 1 end
-	jump_index, palette = 0, nil
+	jump_index, palette, anchor = 0, nil, nil
 	last = { layer = layer_now(), pick = picked(), dir = editor.values[EDITORDIR], unsaved = editor3.values[UNSAVED] }
 	speech.speak_lines({
 		speech.join({ generaldata.strings[LEVELNAME], size_text() }),
@@ -466,7 +604,7 @@ end
 
 function M.tick()
 	if not M.active() then
-		palette = nil
+		palette, anchor = nil, nil
 		-- The editor's own menus (palette, settings, level menu) and a test
 		-- run keep the screen's state; the level lists end it.
 		if here_key and LISTS[editor.strings[MENU]] then here_key = nil end
@@ -502,6 +640,15 @@ function M.attach(m)
 	speech, i18n, input, state, hooks, log = m.speech, m.i18n, m.input, m.level_state, m.hooks, m.log
 	menu, menu_nav, dialog = m.menu, m.menu_nav, m.dialog
 	here_key, last, palette, away = nil, nil, nil, false
+
+	-- WASD: the game shifts everything one tile, wrapping at the edges.
+	hooks.wrap("editor_moveall", function(orig, dir, undoing, ...)
+		local r = table.pack(orig(dir, undoing, ...))
+		if M.active() and not undoing then
+			pcall(function() speech.speak(i18n.t("editor.shifted", dir_word(dir)), true) end)
+		end
+		return table.unpack(r, 1, r.n)
+	end)
 
 	hooks.wrap("doundo_editor", function(orig, ...)
 		local line = M.active() and undo_summary() or nil
@@ -556,6 +703,18 @@ function M.attach(m)
 	input.bind("editor", "l", "editor.census", census)
 	input.bind("editor", "p", "editor.palette", palette_open)
 	input.bind("editor", "F2", "editor.settings", settings)
+	input.bind("editor", "ctrl+enter", "editor.flood", flood)
+	input.bind("editor", "space", "editor.corner", function() rect_fill(false) end)
+	input.bind("editor", "ctrl+v", "editor.paste", paste, { when = function() return clipboard ~= nil end })
+
+	-- With a corner marked.
+	input.layer("editor_rect", function() return editing() and anchor ~= nil end)
+	input.bind("editor_rect", "space", "editor.rect_fill", function() rect_fill(false) end)
+	input.bind("editor_rect", "shift+space", "editor.rect_outline", function() rect_fill(true) end)
+	input.bind("editor_rect", "delete", "editor.rect_erase", rect_erase)
+	input.bind("editor_rect", "ctrl+c", "editor.rect_copy", function() rect_copy(false) end)
+	input.bind("editor_rect", "ctrl+x", "editor.rect_cut", function() rect_copy(true) end)
+	input.bind("editor_rect", "escape", "editor.rect_cancel", rect_cancel)
 
 	input.layer("editor_palette", function() return M.active() and palette ~= nil end)
 	input.bind("editor_palette", "down", "editor.palette_next", function() palette_move(1) end, rep)
