@@ -573,7 +573,8 @@ function M.title(name)
 		for k in pairs(t or {}) do
 			if tostring(k):match("^slide%d+$") then count = count + 1 end
 		end
-		local n = tonumber(tostring(slide or ""):match("%d+"))
+		-- "slide4b" follows slide 4 and is read as 4b.
+		local n = tostring(slide or ""):match("^slide(%d+%a*)$")
 		if n and count > 0 then return i18n.t("menu.tutorial", n, count) end
 		return nil
 	end
