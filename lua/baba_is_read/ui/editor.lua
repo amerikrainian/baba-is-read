@@ -672,7 +672,8 @@ function M.tick()
 	if away then
 		away = false
 		last = { layer = layer_now(), pick = picked(), dir = editor.values[EDITORDIR], unsaved = editor3.values[UNSAVED] }
-		speech.speak(tile_line(cx, cy), true)
+		-- Queued: a test run's last words ("win") may still be speaking.
+		speech.speak(tile_line(cx, cy), false)
 		return
 	end
 	-- Changes made by the game's own keys.

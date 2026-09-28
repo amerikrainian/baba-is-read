@@ -60,6 +60,12 @@ return {
 	["level.fled"] = "fled {0}",
 	["level.teleported"] = "teleported {0}",
 	["level.moved"] = "moved {0}",
+	["level.fell"] = "fell {0}",
+	["move.teleported"] = "teleported", ["move.fell"] = "fell", ["move.shifted"] = "shifted",
+	["move.fled"] = "fled", ["move.moved"] = "moved", ["move.swapped"] = "swapped",
+	["level.swapped"] = "swapped {0}",
+	-- Undo record kinds read by name ("level.undo.<kind>"); a mod's may be added.
+	["level.undo.done"] = "{0} done",
 	["level.sank"] = "sank {0}",
 	["level.defeated"] = "defeated {0}",
 	["level.melted"] = "melted {0}",
@@ -68,6 +74,7 @@ return {
 	["level.eaten"] = "ate {0}",
 	["level.opened"] = "opened {0}",
 	["level.destroyed"] = "destroyed {0}",
+	["level.destroyed_by"] = "destroyed {0}, {1}",   -- names, the game's effect id
 	["level.became"] = "{0} became {1}",
 	["level.made"] = "made {0}",
 	["level.bonus"] = "orb",

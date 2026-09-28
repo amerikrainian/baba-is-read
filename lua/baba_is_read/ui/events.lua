@@ -5,14 +5,24 @@
 -- turn_end, from the game's own records:
 --
 --   moved others   snapshot of every visible unit at the turn start, diffed
---                  at the end; classified as pushed or pulled (a wrapper on
---                  dopush), shifted or fled (the movement_take hook's reason),
---                  teleported (a jump of more than one tile) or moved
---   destroyed      a wrapper on delete, the cause being the last effect the
---                  game announced through checkeffecthistory (sink, defeat,
---                  hot, weak, boom, eat, unlock)
+--                  at the end, each step also seen as the game records it
+--                  (the "update" undo entries: one per step, a jump of more
+--                  than a tile is a teleport). Classified, first match wins:
+--                  swapped (two objects traded tiles), teleported, pushed or
+--                  pulled (a wrapper on dopush), fell (moved while the game's
+--                  fallblock ran), by the movement_take hook's reason (shift
+--                  is "shifted", fear "fled", any other reason with a
+--                  "level.<reason>" string of its own, e.g. a mod's), moved
+--   destroyed      a wrapper on delete; the cause is the effect the game
+--                  named through checkeffecthistory at that tile (it bursts
+--                  particles there right after, MF_particles), before or
+--                  after the deletion, whichever is nearer in sequence; with
+--                  no effect at the tile, the nearest effect anywhere; with
+--                  none at all, the effect named last before it
 --   became, made   the "convert" and "create" entries the game appends to its
---                  undo record (a wrapper on addundo), bonus likewise
+--                  undo record (a wrapper on addundo), bonus likewise; any
+--                  other undo kind with a "level.undo.<kind>" string is read
+--                  with the names it carries ("rock done")
 --   level failed   a wrapper on destroylevel: the game's own "Infinite loop"
 --                  and "Too complex!" texts
 --   the ending     wrappers on MF_end and MF_allisdone, spoken at once
@@ -29,11 +39,19 @@ local hooks, state, i18n, speech, log
 local watching = false   -- between a turn's start and its turn_end
 local snap = {}          -- fixed -> { name=, x=, y= } at the turn start
 local pushed, pulled = {}, {}
-local reasons = {}       -- fixed -> movement reason from movement_take
+local reasons = {}       -- fixed -> { reason, ... } from movement_take, in order
+local you_moves = {}     -- fixed -> { kind, ... } how the player was moved beyond its own step
+local steps = {}         -- fixed -> { jump = true?, phase = "fell"? } from the game's update records
+local phase = nil        -- the block phase running now (PHASES), for the steps it makes
 local destroyed = {}     -- { { name=, cause= }, ... }
 local cause = nil        -- the effect last announced by checkeffecthistory
+local effects = {}       -- { { id =, x =, y =, seq = }, ... } effects with their tile
+local pending_effect = nil -- an effect waiting for its particles' tile
+local seq = 0
 local converted = {}     -- { { from=, to= }, ... }
 local made = {}          -- { name, ... }
+local undo_kinds = {}    -- kind -> { name = count } for undo kinds with a string, in order
+local undo_order = {}
 local bonus = 0
 local failed = nil       -- destroylevel style
 local signs = {}         -- { { id=, x=, y=, text=, level= }, ... }
@@ -43,7 +61,12 @@ local CAUSE_KEYS = {
 	sink = "level.sank", defeat = "level.defeated", hot = "level.melted", weak = "level.broke",
 	boom = "level.exploded", eat = "level.eaten", unlock = "level.opened",
 }
-local MOVE_KINDS = { "pushed", "pulled", "shifted", "fled", "teleported", "moved" }
+local MOVE_KINDS = { "swapped", "teleported", "pushed", "pulled", "fell", "shifted", "fled", "moved" }
+-- Movement reasons (movement_take) with a word of their own; any other
+-- reason is looked up as "level.<reason>", then read as "moved".
+local REASON_KINDS = { shift = "shifted", fear = "fled", you = "moved" }
+-- Game functions whose moves are named after them.
+local PHASES = { fallblock = "fell" }
 
 local function level_key()
 	return tostring(generaldata.strings[WORLD]) .. "/" .. tostring(generaldata.strings[CURRLEVEL])
@@ -95,8 +118,9 @@ function M.begin()
 	if not state.in_puzzle() then return end
 	watching = true
 	snap = snapshot()
-	pushed, pulled, reasons, destroyed, converted, made = {}, {}, {}, {}, {}, {}
-	cause, bonus, failed = nil, 0, nil
+	pushed, pulled, reasons, destroyed, converted, made, steps, you_moves = {}, {}, {}, {}, {}, {}, {}, {}
+	cause, bonus, failed, effects, pending_effect = nil, 0, nil, {}, nil
+	undo_kinds, undo_order = {}, {}
 end
 
 -- The turn's events as lines, in the order they matter: movement, destruction,
@@ -108,23 +132,52 @@ function M.lines()
 
 	local you = {}
 	for _, u in ipairs(state.you_units()) do you[u.fixed] = true end
-	local groups = {}
-	for _, k in ipairs(MOVE_KINDS) do groups[k] = {} end
+	-- Every visible unit that moved, the player included (a swap pairs them).
+	local movers = {}
 	for _, u in ipairs(units or {}) do
 		local s = snap[u.fixed]
-		if s and not you[u.fixed] and state.is_visible(u) then
-			local x, y = u.values[XPOS], u.values[YPOS]
-			if x ~= s.x or y ~= s.y then
-				local kind
-				if math.abs(x - s.x) + math.abs(y - s.y) > 1 then kind = "teleported"
-				elseif pushed[u.fixed] then kind = "pushed"
-				elseif pulled[u.fixed] then kind = "pulled"
-				elseif reasons[u.fixed] == "shift" then kind = "shifted"
-				elseif reasons[u.fixed] == "fear" then kind = "fled"
-				else kind = "moved" end
-				-- Pushed and pulled text goes by its word alone: "pushed flag".
-				bump(groups[kind], (kind == "pushed" or kind == "pulled") and word_of(u) or state.name_of(u))
+		if s and state.is_visible(u) and (u.values[XPOS] ~= s.x or u.values[YPOS] ~= s.y) then
+			movers[#movers + 1] = { u = u, fx = s.x, fy = s.y, tx = u.values[XPOS], ty = u.values[YPOS] }
+		end
+	end
+	local swapped = {}
+	for i, a in ipairs(movers) do
+		for j = i + 1, #movers do
+			local b = movers[j]
+			if a.fx == b.tx and a.fy == b.ty and a.tx == b.fx and a.ty == b.fy then
+				swapped[a.u.fixed], swapped[b.u.fixed] = true, true
 			end
+		end
+	end
+	local groups, kinds = {}, {}
+	for _, k in ipairs(MOVE_KINDS) do groups[k] = {}; kinds[#kinds + 1] = k end
+	for _, m in ipairs(movers) do
+		local u, id = m.u, m.u.fixed
+		if you[id] then
+			-- The player: what moved it besides its own step.
+			local st, list, seen = steps[id], {}, {}
+			local function add(k) if k and not seen[k] then seen[k] = true; list[#list + 1] = k end end
+			if st and st.jump then add("teleported") end
+			if st and st.phase then add(st.phase) end
+			for _, r in ipairs(reasons[id] or {}) do
+				if r ~= "you" then add(REASON_KINDS[r] or (i18n.has("level." .. r) and r) or "moved") end
+			end
+			you_moves[id] = list
+		else
+			local st = steps[id]
+			local kind
+			if swapped[id] then kind = "swapped"
+			elseif (st and st.jump) or (not st and math.abs(m.tx - m.fx) + math.abs(m.ty - m.fy) > 1) then kind = "teleported"
+			elseif pushed[id] then kind = "pushed"
+			elseif pulled[id] then kind = "pulled"
+			elseif st and st.phase then kind = st.phase
+			elseif reasons[id] then
+				local r = reasons[id][1]
+				kind = REASON_KINDS[r] or (i18n.has("level." .. r) and r) or "moved"
+			else kind = "moved" end
+			if not groups[kind] then groups[kind] = {}; kinds[#kinds + 1] = kind end
+			-- Pushed and pulled text goes by its word alone: "pushed flag".
+			bump(groups[kind], (kind == "pushed" or kind == "pulled") and word_of(u) or state.name_of(u))
 		end
 	end
 	-- A pushed or pulled unit destroyed in the same turn (a rock pushed into
@@ -136,10 +189,22 @@ function M.lines()
 			if not present[id] and snap[id] then bump(groups[pair[2]], snap[id].word) end
 		end
 	end
-	for _, k in ipairs(MOVE_KINDS) do
+	for _, k in ipairs(kinds) do
 		if next(groups[k]) then out[#out + 1] = i18n.t("level." .. k, counted(groups[k])) end
 	end
 
+	-- Each deletion's cause: the effect at its tile nearest in sequence, else
+	-- the effect nearest in sequence anywhere (a key opening the door next to it).
+	for _, d in ipairs(destroyed) do
+		local best, dist, any, anydist = nil, nil, nil, nil
+		for _, e in ipairs(effects) do
+			local k = math.abs(e.seq - d.seq)
+			if e.x == d.x and e.y == d.y and (not dist or k < dist) then best, dist = e, k end
+			if not anydist or k < anydist then any, anydist = e, k end
+		end
+		best = best or any
+		if best then d.cause = best.id end
+	end
 	local by_cause, order = {}, {}
 	for _, d in ipairs(destroyed) do
 		local c = d.cause or "destroyed"
@@ -147,7 +212,12 @@ function M.lines()
 		bump(by_cause[c], d.name)
 	end
 	for _, c in ipairs(order) do
-		out[#out + 1] = i18n.t(CAUSE_KEYS[c] or "level.destroyed", counted(by_cause[c]))
+		if CAUSE_KEYS[c] or c == "destroyed" then
+			out[#out + 1] = i18n.t(CAUSE_KEYS[c] or "level.destroyed", counted(by_cause[c]))
+		else
+			-- An effect with no word of ours (a mod's): the game's own name for it.
+			out[#out + 1] = i18n.t("level.destroyed_by", counted(by_cause[c]), c)
+		end
 	end
 
 	local pairs_, porder = {}, {}
@@ -168,6 +238,10 @@ function M.lines()
 		out[#out + 1] = i18n.t("level.made", counted(counts))
 	end
 
+	for _, kind in ipairs(undo_order) do
+		out[#out + 1] = i18n.t("level.undo." .. kind, counted(undo_kinds[kind]))
+	end
+
 	if bonus == 1 then out[#out + 1] = i18n.t("level.bonus")
 	elseif bonus > 1 then out[#out + 1] = i18n.t("level.bonus_n", bonus) end
 
@@ -175,6 +249,16 @@ function M.lines()
 	elseif failed == "toocomplex" then out[#out + 1] = i18n.game("ingame_toocomplex")
 	elseif failed == "" then out[#out + 1] = i18n.t("level.level_destroyed") end
 
+	return out
+end
+
+-- How the last turn moved a player unit besides its own step, as words
+-- ("shifted", "teleported"), for the position line; empty when it only walked.
+function M.you_moved(unit)
+	local out = {}
+	for _, k in ipairs(unit and you_moves[unit.fixed] or {}) do
+		out[#out + 1] = i18n.has("move." .. k) and i18n.t("move." .. k) or k
+	end
 	return out
 end
 
@@ -207,12 +291,29 @@ local function install()
 	-- never make the wrapper's fallback run the game function twice.
 	hooks.wrap("checkeffecthistory", function(orig, id, ...)
 		cause = id
+		if watching then
+			seq = seq + 1
+			pending_effect = { id = id, seq = seq }
+		end
 		return orig(id, ...)
+	end)
+	-- The effect's particles come right after it, at its tile.
+	hooks.wrap("MF_particles", function(orig, kind, x, y, ...)
+		if pending_effect then
+			pending_effect.x, pending_effect.y = x, y
+			effects[#effects + 1] = pending_effect
+			pending_effect = nil
+		end
+		return orig(kind, x, y, ...)
 	end)
 	hooks.wrap("delete", function(orig, unitid, x_, y_, total_, ...)
 		if watching and unitid ~= 2 and not total_ and cause ~= "bonus" then
 			local u = mmf.newObject(unitid)
-			if u and u.strings then destroyed[#destroyed + 1] = { name = state.name_of(u), cause = cause } end
+			if u and u.strings then
+				seq = seq + 1
+				destroyed[#destroyed + 1] = { name = state.name_of(u), cause = cause, seq = seq,
+					x = x_ or u.values[XPOS], y = y_ or u.values[YPOS] }
+			end
 		end
 		return orig(unitid, x_, y_, total_, ...)
 	end)
@@ -222,19 +323,39 @@ local function install()
 		end
 		return orig(unitid, ox, oy, dir, pulling_, ...)
 	end)
-	hooks.wrap("addundo", function(orig, line, ...)
+	hooks.wrap("addundo", function(orig, line, uid, ...)
 		if watching and type(line) == "table" then
 			local kind = line[1]
-			if kind == "convert" then
+			if kind == "update" and uid then
+				-- One step: { "update", name, oldx, oldy, olddir, x, y, dir, id }.
+				local st = steps[uid] or {}
+				steps[uid] = st
+				local dx, dy = (line[6] or 0) - (line[3] or 0), (line[7] or 0) - (line[4] or 0)
+				if math.abs(dx) + math.abs(dy) > 1 then st.jump = true end
+				if phase and (dx ~= 0 or dy ~= 0) then st.phase = phase end
+			elseif kind == "convert" then
 				converted[#converted + 1] = { from = spoken_name(line[2]), to = spoken_name(line[3]) }
 			elseif kind == "create" and line[5] == "create" then
 				made[#made + 1] = spoken_name(line[2])
 			elseif kind == "bonus" then
 				bonus = bonus + 1
+			elseif type(kind) == "string" and type(line[2]) == "string" and i18n.has("level.undo." .. kind) then
+				if not undo_kinds[kind] then undo_kinds[kind] = {}; undo_order[#undo_order + 1] = kind end
+				bump(undo_kinds[kind], spoken_name(line[2]))
 			end
 		end
-		return orig(line, ...)
+		return orig(line, uid, ...)
 	end)
+	for fname, kind in pairs(PHASES) do
+		hooks.wrap(fname, function(orig, ...)
+			local outer = phase
+			phase = kind
+			local r = table.pack(pcall(orig, ...))
+			phase = outer
+			if not r[1] then error(r[2], 0) end
+			return table.unpack(r, 2, r.n)
+		end)
+	end
 	hooks.wrap("destroylevel", function(orig, special_, ...)
 		local style = special_ or ""
 		if watching and style ~= "empty" and style ~= "bonus" then failed = style end
@@ -272,8 +393,10 @@ local function install()
 	hooks.on("movement_take", "events.take", function(extra)
 		if not watching or type(extra) ~= "table" or type(extra[1]) ~= "table" then return end
 		for _, data in ipairs(extra[1]) do
-			if type(data) == "table" and data.unitid and data.reason and not reasons[data.unitid] then
-				reasons[data.unitid] = data.reason
+			if type(data) == "table" and data.unitid and data.reason then
+				local list = reasons[data.unitid]
+				if not list then list = {}; reasons[data.unitid] = list end
+				if list[#list] ~= data.reason then list[#list + 1] = data.reason end
 			end
 		end
 	end)

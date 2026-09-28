@@ -1,6 +1,7 @@
 -- Exploration cursor: the arrows read the level while the player stays put.
 --
--- In a level the arrow keys are ours and step a cursor over the tiles, each
+-- In a level the arrow keys (and Shift+arrows, which stay ours in a level
+-- with a "you2", whose "you" the arrows drive) are ours and step a cursor over the tiles, each
 -- step speaking "col, row[, contents]"; the game's own WASD move the player and
 -- are never captured. On the world map the arrows stay the game's (see
 -- map.lua). Period and comma jump to the next and previous entry of the
@@ -349,11 +350,17 @@ function M.attach(m)
 	speech, i18n, input, state, log = m.speech, m.i18n, m.input, m.level_state, m.log
 	parked_for = nil
 	input.layer("explore", state.in_puzzle)
+	-- The arrows are the game's first key set: with a "you2" in play they
+	-- drive "you" (WASD drive "you2"), so they go back to the game then;
+	-- Shift+arrows step the cursor in every level.
+	local function two_players() return type(featureindex) == "table" and featureindex["you2"] ~= nil end
+	input.layer("explore_arrows", function() return state.in_puzzle() and not two_players() end)
 	local rep = { repeat_ok = true }
-	input.bind("explore", "right", "explore.right", function() step(1, 0) end, rep)
-	input.bind("explore", "left", "explore.left", function() step(-1, 0) end, rep)
-	input.bind("explore", "up", "explore.up", function() step(0, -1) end, rep)
-	input.bind("explore", "down", "explore.down", function() step(0, 1) end, rep)
+	for _, a in ipairs({ { "right", 1, 0 }, { "left", -1, 0 }, { "up", 0, -1 }, { "down", 0, 1 } }) do
+		local k, dx, dy = a[1], a[2], a[3]
+		input.bind("explore_arrows", k, "explore." .. k, function() step(dx, dy) end, rep)
+		input.bind("explore", "shift+" .. k, "explore." .. k, function() step(dx, dy) end, rep)
+	end
 	input.bind("explore", "ctrl+right", "explore.skip_right", function() skip(1, 0) end, rep)
 	input.bind("explore", "ctrl+left", "explore.skip_left", function() skip(-1, 0) end, rep)
 	input.bind("explore", "ctrl+up", "explore.skip_up", function() skip(0, -1) end, rep)

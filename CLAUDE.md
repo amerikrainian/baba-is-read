@@ -175,6 +175,15 @@ hooks, and rules from the `features` tables.
   synced to the active layers every frame, dispatch on key down, `repeat_ok`, `live()` and `press()`
   for the help), `config.lua` (defaults; `[baba_is_read]` in
   the game's settings INI through `MF_read`/`MF_store`), `dev.lua` (runs the command file, replies).
+- Turn events (`ui/events.lua`) are data-driven where the game allows: each step is the game's own
+  "update" undo entry (a jump of more than a tile is a teleport), a swap is two units trading
+  tiles, `PHASES` names the moves a game function makes (`fallblock` = fell), movement_take reasons
+  map to words (`REASON_KINDS`, else a `level.<reason>` string, else "moved"), destruction's cause
+  is the checkeffecthistory effect whose MF_particles burst is at the unit's tile (nearest in
+  sequence; the game deletes before or after naming the effect depending on the path), an unknown
+  effect is read by its id (`level.destroyed_by`), and any undo kind with a `level.undo.<kind>`
+  string is read with its names (`done`). The player's line takes the unit the command drove
+  (command_given's player 2 = "you2") that moved, and says how it was moved beyond its step.
 - `lua/baba_is_read/ui/`: `menu.lua` (`current()`, `describe(state)`, `static_text`, `title`, `tick`,
   `details`, `dump`), `menu_nav.lua` (`applies`, `active`, `items`, `index`),
   `menu_overrides.lua` (per menu: `items[id] = {kind = toggle|radio|slider|button, label = <game

@@ -27,6 +27,7 @@ local before = nil        -- { key = <command>, you = { [fixed] = {x, y, name} }
 local known_rules = nil   -- set of rule strings at the last announcement
 local announce_start = false
 local undo_delay = nil    -- frames to wait before speaking an undo (rules re-parse after the hook)
+local win_wait = nil      -- frames left before "win" is spoken without its turn's line (level_win fires first)
 
 local function you_snapshot()
 	local snap = {}
@@ -73,15 +74,19 @@ end
 -- The line for where the player is now: "<name>[, float], col, row[, contents]"
 -- with the name only when asked for or changed (a float change counts, since
 -- it decides what the player can touch).
-local function where_line(with_name, prev)
+local function where_line(with_name, prev, unit)
 	local you = state.you_units()
-	local u = you[1]
+	local u = unit or you[1]
 	if not u then return i18n.t("level.no_you") end
 	local x, y = u.values[XPOS], u.values[YPOS]
 	local name = state.label_of(u)
 	local parts = {}
 	if with_name or (prev and prev.name ~= name) then parts[#parts + 1] = name end
 	parts[#parts + 1] = state.pos_text(x, y)
+	-- A 3d player turns and walks relative to its facing: say it.
+	if type(hasfeature) == "function" and hasfeature(u.strings[UNITNAME], "is", "3d", u.fixed) then
+		parts[#parts + 1] = state.facing_word(u)
+	end
 	local here = state.describe_tile(x, y, u)
 	if here ~= "" then parts[#parts + 1] = here end
 	if #you > 1 then parts[#parts + 1] = i18n.t("level.you_count", #you) end
@@ -122,7 +127,7 @@ end
 
 local function on_command(extra)
 	if not state.in_puzzle() then return end
-	before = { key = extra and extra[1], you = you_snapshot() }
+	before = { key = extra and extra[1], player = extra and extra[2], you = you_snapshot() }
 	events.begin()
 end
 
@@ -136,32 +141,57 @@ end
 local function on_turn_end(extra)
 	if not state.in_puzzle() then return end
 	local key = before and before.key
+	local player = before and before.player
 	local auto = before and before.auto
 	local snap = before and before.you or {}
 	before = nil
 	for _, l in ipairs(events.lines()) do pending[#pending + 1] = l end
 	local you = state.you_units()
 	if #you == 0 then flush(i18n.t("level.no_you"), true); return end
-	local u = you[1]
+	-- The units this command drives: player 2 (the game's second key set
+	-- while there is a "you2") moves "you2", player 1 "you". The line is the
+	-- first of them that moved, named when several kinds are controlled.
+	local driven = you
+	if type(getunitswitheffect) == "function" then
+		local effect = (player == 2 and featureindex["you2"] ~= nil) and "you2" or "you"
+		local ok, list = pcall(getunitswitheffect, effect, true)
+		if ok and type(list) == "table" and #list > 0 then driven = list end
+	end
+	local u = driven[1]
+	for _, v in ipairs(driven) do
+		local p = snap[v.fixed]
+		if not p or p.x ~= v.values[XPOS] or p.y ~= v.values[YPOS] then u = v; break end
+	end
+	local names = {}
+	for _, v in ipairs(you) do names[state.label_of(v)] = true end
+	local several = next(names, next(names)) ~= nil
 	local prev = snap[u.fixed]
 	local moved = not prev or prev.x ~= u.values[XPOS] or prev.y ~= u.values[YPOS]
 	local line = nil
 	local dir = keys and key and keys[key]
+	-- Moved beyond its own step (a belt, a teleporter, a fall): say how first.
+	local how = events.you_moved(u)
+	local function with_how(l)
+		if #how == 0 or not l then return l end
+		return speech.join({ table.concat(how, ", "), l })
+	end
 	if auto then
-		if moved then line = where_line(false, prev) end
+		if moved then line = with_how(where_line(several, prev, u)) end
 	elseif dir == nil or dir > 4 then
 		line = nil
 	elseif dir == 4 then
 		line = i18n.t("level.wait")
 	elseif moved then
-		line = where_line(false, prev)
+		line = with_how(where_line(several, prev, u))
 	else
 		local d = ndirs[dir + 1]
-		local ahead = state.describe_tile(u.values[XPOS] + d[1], u.values[YPOS] + d[2], u)
+		local ax, ay = u.values[XPOS] + d[1], u.values[YPOS] + d[2]
+		local ahead = state.in_bounds(ax, ay) and state.describe_tile(ax, ay, u) or i18n.t("level.edge")
 		line = ahead ~= "" and i18n.t("level.blocked_by", ahead) or i18n.t("level.blocked")
 	end
 	flush(line, true)
 	for _, s in ipairs(events.sign_lines()) do speech.speak(s, false) end
+	if win_wait then win_wait = nil; speech.speak(i18n.t("level.win"), false) end
 end
 
 -- The undo hook fires before the game re-parses the rules, so the line waits
@@ -175,6 +205,10 @@ end
 -- data is already the new level's at that point. Menus opening and closing
 -- over a level, and the transition frames, never re-announce it.
 function M.tick()
+	if win_wait then
+		win_wait = win_wait - 1
+		if win_wait <= 0 then win_wait = nil; speech.speak(i18n.t("level.win"), false) end
+	end
 	if undo_delay then
 		undo_delay = undo_delay - 1
 		if undo_delay <= 0 then
@@ -218,7 +252,7 @@ end
 function M.attach(m)
 	mods = m
 	speech, i18n, hooks, input, config, log, state, events = m.speech, m.i18n, m.hooks, m.input, m.config, m.log, m.level_state, m.events
-	pending, before, known_rules, announce_start, undo_delay = {}, nil, nil, false, nil
+	pending, before, known_rules, announce_start, undo_delay, win_wait = {}, nil, nil, false, nil, nil
 	if state.in_puzzle() then known_rules = rules_set() end
 
 	hooks.on("level_start", "level.start", function() announce_start = true end)
@@ -226,7 +260,8 @@ function M.attach(m)
 	hooks.on("turn_auto", "level.auto", on_auto)
 	hooks.on("turn_end", "level.turn", on_turn_end)
 	hooks.on("undoed_after", "level.undo", on_undo)
-	hooks.on("level_win", "level.win", function() if state.in_puzzle() then pending = {}; speech.speak(i18n.t("level.win"), true) end end)
+	-- The win comes after its turn's lines (the hook fires before turn_end).
+	hooks.on("level_win", "level.win", function() if state.in_puzzle() then win_wait = 3 end end)
 
 	input.layer("level", state.in_puzzle)
 	input.bind("level", "t", "level.rules", M.say_rules)
