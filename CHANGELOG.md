@@ -2,7 +2,7 @@
 
 ## V0.0.2
 
-- Made  maps like levels, which means they gain the cursor, markers, etc. This is hopefully enough to unblock us when map turns to being a puzzle in itself.
+- Made maps like levels, which means they gain the cursor, markers, etc. This is hopefully enough to unblock us when map turns to being a puzzle in itself.
 - I, J, K and L press the game's arrows, so the arrow keys' own player (the "you" of a "you2" level) and the map cursor stay reachable.
 - The level list and its jump are removed.
 - Tiles name level icons with their status wherever they are.
