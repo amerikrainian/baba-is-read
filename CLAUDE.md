@@ -373,7 +373,8 @@ are ours because the game draws most menus without a name.
    game shows only when the cursor can stand there, `COMPLETED > 1`, so speaking it early leaks), bonus marks (save `<world>_bonus`, unverified),
    gates (`paths` with `PATH_GATE` > 0 whose path has appeared: `PATH_TARGET` is the spawned lock
    object, `COMPLETED` 1 closed), control hints (`[specials]` `controls,<key>` read from the level
-   file, worded with the game's `idle`/`move`/direction strings), progress (save `<world>_prize/
+   file, worded with the game's `idle`/`move`/direction strings and the key the icon shows, the
+   first `[keyboard]` binding of the subtype: "hint, Wait, Space"), progress (save `<world>_prize/
    _clears/_bonus` totals against `MF_read("world","general","prize_max"...)`), a diff against the
    last visit on re-entry, "Map clear!" from an `unlockeffect` wrapper. Verified with a scene in a
    scratch custom level (Baba, rules, a cursor, icons, a flag carrying a level, created in test play

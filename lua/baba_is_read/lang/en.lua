@@ -125,6 +125,7 @@ return {
 	["map.revealed"] = "revealed: {0}",
 	["map.gate_opened"] = "gate opened, {0}",
 	["map.hint"] = "hint, {0}",
+	["map.hint_key"] = "hint, {0}, {1}",
 	["dir.right"] = "right",
 	["dir.up"] = "up",
 	["dir.left"] = "left",

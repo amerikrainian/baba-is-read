@@ -34,6 +34,7 @@ local function key_name(spec)
 	end
 	return table.concat(parts, "+")
 end
+M.key_name = key_name
 
 local function row_label(row)
 	if row.label then return row.label end

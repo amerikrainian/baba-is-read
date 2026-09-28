@@ -74,6 +74,13 @@ function M.first_vk(action)
 	return ok and sdl_to_vk(code) or nil
 end
 
+-- The key name (a help spec, "space", "down") of an action's first binding,
+-- nil when none reads: the key a control hint's icon shows.
+function M.first_key(action)
+	local vk = M.first_vk(action)
+	return vk and vk_name(vk) or nil
+end
+
 -- The actions per screen, in listing order, with the label key. "hybrid" is a
 -- level with both a player and a map cursor: one key moves both.
 local CONTEXTS = {

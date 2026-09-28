@@ -8,10 +8,10 @@
 -- first, then the row, like chess notation.
 local M = {}
 
-local config, i18n, speech
+local config, i18n, speech, mods
 
 function M.attach(m)
-	config, i18n, speech = m.config, m.i18n, m.speech
+	config, i18n, speech, mods = m.config, m.i18n, m.speech, m
 end
 
 function M.in_level()
@@ -669,30 +669,45 @@ function M.gate_at(x, y)
 end
 
 -- The control hints a level draws (special objects of the "controls" kind,
--- read from the level file once per level): { x=, y=, label= } with the
--- game's own words, "Wait", "Move", "Right".
+-- read from the level file once per level): { x=, y=, label= }. The game
+-- draws the key bound to the hint's setting (the subtype names it: idle, down,
+-- right2) and under it, except for the directions, the word: "Wait", "Move".
+-- The label is the word (the direction's for those) and the key, "hint, Wait,
+-- Space", the key read at call time so a rebinding shows.
 local HINT_KEYS = { idle = "idle", down = "move", down2 = "move2", up = "up", left = "left", right = "right",
 	up2 = "up", left2 = "left", right2 = "right" }
 local hints_cache = nil
+
+local function hint_label(h)
+	local key = mods.game_keys and mods.game_keys.first_key(h.setting)
+	if key and mods.help then return i18n.t("map.hint_key", h.word, mods.help.key_name(key)) end
+	return i18n.t("map.hint", h.word)
+end
+
 function M.hints()
 	local key = M.level_key()
-	if hints_cache and hints_cache.key == key then return hints_cache.list end
-	local list = {}
-	if type(MF_read) == "function" then
-		for i = 0, 199 do
-			local ok, data = pcall(MF_read, "level", "specials", i .. "data")
-			if not ok or data == nil or data == "" then break end
-			local kind, sub = tostring(data):match("^([^,]*),?(.*)$")
-			if kind == "controls" then
-				local word = i18n.game(HINT_KEYS[sub] or sub)
-				if word == "" then word = sub end
-				list[#list + 1] = { x = tonumber(MF_read("level", "specials", i .. "X")) or 0,
-					y = tonumber(MF_read("level", "specials", i .. "Y")) or 0, label = i18n.t("map.hint", word) }
+	if not (hints_cache and hints_cache.key == key) then
+		local list = {}
+		if type(MF_read) == "function" then
+			for i = 0, 199 do
+				local ok, data = pcall(MF_read, "level", "specials", i .. "data")
+				if not ok or data == nil or data == "" then break end
+				local kind, sub = tostring(data):match("^([^,]*),?(.*)$")
+				if kind == "controls" then
+					local word = i18n.game(HINT_KEYS[sub] or sub)
+					if word == "" then word = sub end
+					list[#list + 1] = { x = tonumber(MF_read("level", "specials", i .. "X")) or 0,
+						y = tonumber(MF_read("level", "specials", i .. "Y")) or 0, word = word, setting = sub }
+				end
 			end
 		end
+		hints_cache = { key = key, list = list }
 	end
-	hints_cache = { key = key, list = list }
-	return list
+	local out = {}
+	for i, h in ipairs(hints_cache.list) do
+		out[i] = { x = h.x, y = h.y, label = hint_label(h) }
+	end
+	return out
 end
 
 function M.hint_at(x, y)
