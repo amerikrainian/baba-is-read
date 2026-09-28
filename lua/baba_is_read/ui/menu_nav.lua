@@ -229,6 +229,14 @@ function M.attach(m)
 	end
 	input.bind("menu_virtual", "enter", "menu.virtual_enter", press)
 	input.bind("menu_virtual", "space", "menu.virtual_space", press)
+	-- Menus whose buttons answer only the mouse (overrides click = true):
+	-- Enter and Space click the focused button.
+	input.layer("menu_click", function()
+		local state = menu.current()
+		return state ~= nil and not M.virtual_active() and overrides.menu(state.name).click == true
+	end)
+	input.bind("menu_click", "enter", "menu.click", function() menu.click_focused() end)
+	input.bind("menu_click", "space", "menu.click", function() menu.click_focused() end)
 end
 
 return M

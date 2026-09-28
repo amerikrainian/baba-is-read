@@ -436,6 +436,11 @@ function M.describe(state, with_position)
 	local label = ""
 	local tip = button and speech.clean(button.strings[BUTTONTOOLTIP]) or ""
 	if button then label = M.expand(speech.clean(button.strings[BUTTONTEXT])) end
+	local mo = overrides.menu(state.name)
+	if mo.label_of then
+		local ok, text = pcall(mo.label_of, state.target, i18n)
+		if ok and text then label = speech.clean(text) end
+	end
 	if STEPS[label] then label = i18n.t(STEPS[label]) end
 	if ov.text then label = i18n.t(ov.text) end
 	-- The editor's object lists: an index into editor_objlist (the add-object
@@ -681,6 +686,17 @@ function M.tick(frame)
 		speech.speak(value or "", true)
 		last.value = value
 	end
+end
+
+-- Clicks the focused button where the game answers only the mouse (the
+-- palette menu's toolbar: its grid gets Enter from nothing). True if a
+-- click went out.
+function M.click_focused()
+	local state = M.current()
+	if not state or state.virtual then return false end
+	local button = find_objects(state.target, state.name)
+	if not button or button.values[BUTTON_DISABLED] == 1 then return false end
+	return mods.dialog.click(button.values[BUTTON_STOREDX], button.values[BUTTON_STOREDY], state.target)
 end
 
 -- The focused item's tooltip (the game sets one only on editor buttons). Never

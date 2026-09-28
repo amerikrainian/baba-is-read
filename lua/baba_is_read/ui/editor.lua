@@ -71,6 +71,14 @@ local function layer_now()
 	return editor.values[LAYER] or 0
 end
 
+-- "layer 2"; nothing while a brush (levels, paths) has set a layer past the
+-- three the player picks from.
+local function layer_text(z)
+	z = z or layer_now()
+	if z < 0 or z > 2 then return "" end
+	return i18n.t("editor.layer", z + 1)
+end
+
 local function dir_word(d)
 	local key = DIR_WORDS[d]
 	return key and i18n.t(key) or tostring(d)
@@ -79,6 +87,9 @@ end
 -- The spoken name of a tile object id ("object020" -> "baba text").
 local function object_word(obj)
 	if not obj or obj == "" then return i18n.t("editor.nothing") end
+	if obj == "level" then return i18n.t("editor.brush_level") end
+	if obj == "path" then return i18n.t("editor.path") end
+	if obj == "specialobject" then return i18n.t("editor.special") end
 	local ok, name = pcall(getactualdata_objlist, obj, "name")
 	if not ok or not name or name == "" then ok, name = pcall(getactualdata, obj, "name") end
 	return menu.object_name(ok and name or obj)
@@ -116,8 +127,27 @@ local function unit_word(u)
 	return menu.object_name(u.strings[UNITNAME])
 end
 
--- "baba text", "keke left", "wall on layer 2".
+-- The map objects the Levels, Paths and Special brushes place: one per
+-- tile, off the three layers, each with a setup screen of its own.
+local SPECIAL = { level = true, path = true, specialobject = true }
+
+local function special_here(x, y, name)
+	for _, u in ipairs(units_here(x, y)) do
+		if u.strings[UNITNAME] == name then return u end
+	end
+	return nil
+end
+
+-- "baba text", "keke left", "wall on layer 2", "level icon, one".
 local function unit_text(u)
+	local uname = u.strings[UNITNAME]
+	if uname == "level" then
+		local target = u.strings[U_LEVELNAME] or ""
+		if target == "" or u.strings[U_LEVELFILE] == "nothing" then return i18n.t("editor.level_icon_empty") end
+		return i18n.t("editor.level_icon", target)
+	end
+	if uname == "path" then return i18n.t("editor.path") end
+	if uname == "specialobject" then return i18n.t("editor.special") end
 	local text = unit_word(u)
 	if state.shows_facing(u) then text = i18n.t("editor.facing", text, dir_word(u.values[DIR])) end
 	local z = u.values[LAYER]
@@ -232,6 +262,15 @@ end
 local function place()
 	local obj = picked()
 	local z = layer_now()
+	if SPECIAL[obj] then
+		-- An existing one opens its setup (the game's changetile does);
+		-- a new one opens it too (a level icon asks which level).
+		local u = special_here(cx, cy, obj)
+		if u then changetile(obj, cx, cy, z, editor.values[EDITORDIR], u.fixed)
+		else placetile(obj, cx, cy, z, editor.values[EDITORDIR]); commit() end
+		if M.active() then say_tile() end
+		return
+	end
 	if obj == "" and not unit_on_layer(cx, cy, z) then speech.speak(i18n.t("editor.nothing_to_erase", z + 1), true); return end
 	placetile_table(obj, { { cx, cy } }, z, editor.values[EDITORDIR])
 	commit()
@@ -241,6 +280,16 @@ end
 -- Delete: the current layer's object here.
 local function erase()
 	local z = layer_now()
+	local obj = picked()
+	if SPECIAL[obj] then
+		local u = special_here(cx, cy, obj)
+		if not u then speech.speak(i18n.t("editor.nothing_to_erase_special", object_word(obj)), true); return end
+		local word = unit_text(u)
+		removetile(u.fixed, cx, cy)
+		commit()
+		speech.speak(i18n.t("editor.erased", word), true)
+		return
+	end
 	local u = unit_on_layer(cx, cy, z)
 	if not u then speech.speak(i18n.t("editor.nothing_to_erase", z + 1), true); return end
 	local word = unit_word(u)
@@ -379,7 +428,7 @@ local function flood()
 end
 
 local function current_line()
-	if picked() == "" then return i18n.t("editor.nothing") end
+	if picked() == "" or SPECIAL[picked()] then return object_word(picked()) end
 	return i18n.t("editor.facing", object_word(picked()), dir_word(editor.values[EDITORDIR]))
 end
 
@@ -447,7 +496,7 @@ local function where()
 	local unsaved = editor3.values[UNSAVED] == 1
 	speech.speak_lines({
 		speech.join({ generaldata.strings[LEVELNAME], size_text() }),
-		speech.join({ i18n.t("editor.layer", layer_now() + 1), i18n.t(TOOL_WORDS[editor2.values[EDITORTOOL]] or "editor.tool.draw"), current_line() }),
+		speech.join({ layer_text(), i18n.t(TOOL_WORDS[editor2.values[EDITORTOOL]] or "editor.tool.draw"), current_line() }),
 		i18n.t(unsaved and "editor.unsaved" or "editor.saved"),
 	})
 end
@@ -605,7 +654,7 @@ local function announce_entry()
 	last = { layer = layer_now(), pick = picked(), dir = editor.values[EDITORDIR], unsaved = editor3.values[UNSAVED] }
 	speech.speak_lines({
 		speech.join({ generaldata.strings[LEVELNAME], size_text() }),
-		speech.join({ i18n.t("editor.layer", layer_now() + 1), current_line() }),
+		speech.join({ layer_text(), current_line() }),
 		tile_line(cx, cy),
 	})
 end
@@ -629,7 +678,7 @@ function M.tick()
 	-- Changes made by the game's own keys.
 	if layer_now() ~= last.layer then
 		last.layer = layer_now()
-		speech.speak(i18n.t("editor.layer", last.layer + 1), true)
+		if layer_text() ~= "" then speech.speak(layer_text(), true) end
 	end
 	if picked() ~= last.pick or editor.values[EDITORDIR] ~= last.dir then
 		last.pick, last.dir = picked(), editor.values[EDITORDIR]

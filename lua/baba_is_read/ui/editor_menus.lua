@@ -131,6 +131,38 @@ local function colour_row()
 	end } }
 end
 
+-- A level icon's colours in its setup: two rows, the icon's colour and its
+-- colour once cleared, written to the icon as the game's setup does.
+local LEVEL_COLOURS = { { field = "COLOUR", label = "editor_level_setcolour" }, { field = "CLEARCOLOUR", label = "editor_level_setclearcolour" } }
+
+local function level_colour_rows()
+	local u = mmf.newObject(editor.values[EDITTARGET])
+	if not u or u.strings[UNITNAME] ~= "level" then return {} end
+	local list = swatches("addlevel")
+	local rows = {}
+	for _, lc in ipairs(LEVEL_COLOURS) do
+		local field = _G[lc.field]
+		local current = u.strings[field]
+		local items = {}
+		for _, sw in ipairs(list) do
+			items[#items + 1] = sw.key == current and speech.join({ sw.label, i18n.t("state.current") }) or sw.label
+		end
+		rows[#rows + 1] = { label = i18n.game(lc.label), items = items, activate = function(i)
+			local sw = swatches("addlevel")[i]
+			local unit = mmf.newObject(editor.values[EDITTARGET])
+			if not sw or not unit then return end
+			unit.strings[field] = sw.key
+			if lc.field == "COLOUR" then
+				local c1, c2 = sw.key:match("^(%d+),(%d+)$")
+				MF_setcolour(unit.fixed, tonumber(c1), tonumber(c2))
+			end
+			editor3.values[UNSAVED] = 1
+			speech.speak(speech.join({ i18n.game(lc.label), sw.label }), true)
+		end }
+	end
+	return rows
+end
+
 function M.tick()
 	local state = menu.current()
 	if state and state.name == "objectedit" and (state.target == "colour" or state.target == "acolour") then
@@ -142,6 +174,7 @@ function M.attach(m)
 	i18n, menu, menu_nav, dialog, log, speech = m.i18n, m.menu, m.menu_nav, m.dialog, m.log, m.speech
 	menu_nav.provide("currobjlist", function() return { palette_row() } end)
 	menu_nav.provide("object_colour", colour_row)
+	menu_nav.provide("addlevel", level_colour_rows)
 end
 
 return M

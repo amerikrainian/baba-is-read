@@ -369,3 +369,12 @@ are ours because the game draws most menus without a name.
    `dochanges_allinstances` + `HACK_updatethumbnailcolour` and `closemenu()`; colour names are
    blocks.lua's coordinates. Up/Down in a menu with virtual rows step by the game's rows. A click
    (`dialog.click`) needs the window not minimized; it says so when it is.
+   Maps: the palette toolbar ignores Enter (`click = true` override: Enter/Space click the focused
+   button); the Levels/Paths/Special brushes pick "level"/"path"/"specialobject" and set
+   `editor.values[STATE]` (1/3/4) and LAYER 3; those objects are one per tile off the three layers,
+   so `place()` opens an existing one's setup with `changetile` and places a new one with
+   `placetile`. The level lists (`level`, `world`, `levelselect`) keep native navigation (`list =
+   false`): Enter on their big-cursor level row acts on the engine's focus, which a written cursor
+   does not always update. A button whose text goes stale after a change (the level icon's target,
+   the map setup's parent) is read live through `label_of`. Pack marks: `MF_read("world",
+   "general", "start"/"firstlevel")`.

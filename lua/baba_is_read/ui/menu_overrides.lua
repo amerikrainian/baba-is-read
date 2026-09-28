@@ -18,6 +18,7 @@
 -- and per menu:
 --   default_kind, default_value = kind and value for items without an entry
 --   kind_of = function(id) returning a kind, for items without an entry
+--   label_of = function(id, i18n) returning a label read live, or nil
 --   (items may also carry text = <our lang key>, replacing the game's text)
 --   title =a key in the game's language files, the menu's title
 --   quiet_focus = true to leave the focused item out of the entry line
@@ -26,9 +27,22 @@
 --           spoken when the focus moves into another group
 --   order = function(id) returning a rank; list navigation walks the items
 --           by rank, reading order within one
+--   click = true: Enter and Space click the focused button (menus whose
+--           buttons answer only the mouse)
 --   row_text = true: text drawn left of a labelled button on its row is read
 --           before the button's label (a label and its current value)
 local M = {}
+
+-- "icon 3", "icon 3, flower" for a map icon slot button (id = slot index).
+local function icon_slot(id, i18n)
+	local n = tonumber(id)
+	if not n then return nil end
+	local text = i18n.t("menu.icon_slot", n + 1)
+	local c = type(changes) == "table" and changes["Editor_levelnum"]
+	local custom = c and (c[n] or c[tostring(n)])
+	if type(custom) == "table" and custom.file then text = text .. ", " .. tostring(custom.file) end
+	return text
+end
 
 -- Items shared by every menu: the page arrows of the paged lists.
 M.common = {
@@ -106,6 +120,24 @@ M.menus = {
 		end,
 	},
 	-- The level editor.
+	-- The level lists keep the game's own navigation: their row of levels is
+	-- a "big cursor" row, and Enter there acts on the game's idea of the
+	-- focus, which a cursor written from outside does not always update.
+	level = {
+		list = false,
+		-- In a levelpack: its world map and first level (world_data.txt).
+		default_value = function(id, i18n)
+			if type(MF_read) ~= "function" or generaldata.strings[WORLD] == "levels" then return nil end
+			local marks = {}
+			if MF_read("world", "general", "start") == id then marks[#marks + 1] = i18n.t("editor.world_map") end
+			if MF_read("world", "general", "firstlevel") == id then marks[#marks + 1] = i18n.t("editor.first_level") end
+			if #marks == 0 then return nil end
+			return table.concat(marks, ", ")
+		end,
+		items = { setstart = { kind = "toggle" }, setmap = { kind = "toggle" }, sort = { kind = "toggle" }, sorttypes = { kind = "toggle" } },
+	},
+	world = { list = false },
+	levelselect = { list = false, items = { sort = { kind = "toggle" }, sorttypes = { kind = "toggle" } } },
 	editor_start_settings = {
 		title = "editor_start_settings",
 		items = {
@@ -170,6 +202,80 @@ M.menus = {
 			return nil
 		end,
 	},
+	-- A level icon's setup (placed on a map): headings read as each row's group.
+	addlevel = {
+		title = "editor_level_levelsetup",
+		hidden_text = true,
+		items = {
+			s1 = { kind = "radio" }, s2 = { kind = "radio" }, s3 = { kind = "radio" },
+			l1 = { kind = "radio" }, l2 = { kind = "radio" }, l3 = { kind = "radio" }, l4 = { kind = "radio" },
+			l5 = { kind = "radio", text = "menu.custom_icon" },
+		},
+		-- The target button keeps the text it was made with; the icon knows.
+		label_of = function(id, i18n)
+			if id ~= "changelevel" then return nil end
+			local u = mmf.newObject(editor.values[EDITTARGET])
+			local file = u.strings[U_LEVELFILE]
+			if file == "" or file == "nothing" then return i18n.t("editor.level_icon_empty") end
+			return u.strings[U_LEVELNAME]
+		end,
+		-- The symbol steppers: the symbol the icon draws now.
+		default_value = function(id, i18n)
+			if not id:match("^y") then return nil end
+			local ok, sym = pcall(function()
+				local u = mmf.newObject(editor.values[EDITTARGET])
+				return getlevelid(u.values[VISUALLEVEL], u.values[VISUALSTYLE], u.strings[U_LEVELFILE])
+			end)
+			return ok and sym and tostring(sym) or nil
+		end,
+		group = function(id, i18n)
+			if id == "changelevel" then return i18n.game("editor_level_leveltarget") end
+			if id == "setcolour" or id == "setclearcolour" then return i18n.game("editor_level_iconcolour") end
+			if id:match("^s%d$") then return i18n.game("editor_level_initialstate") end
+			if id:match("^l%d$") then return i18n.game("editor_level_levelsymbol") end
+			if id:match("^y") then return i18n.game("editor_level_levelsymbol_symbol") end
+			return nil
+		end,
+	},
+	-- A path's settings (placed on a map, or the defaults from the palette's cog).
+	setpath = {
+		items = {
+			hidden = { kind = "radio" }, visible = { kind = "radio" },
+			s1 = { kind = "radio" }, s2 = { kind = "radio" }, s3 = { kind = "radio" }, s4 = { kind = "radio" }, s5 = { kind = "radio" },
+		},
+		group = function(id, i18n)
+			if id == "hidden" or id == "visible" then return i18n.game("editor_path_pathstate") end
+			if id:match("^s%d$") then return i18n.game("editor_path_locked") end
+			if id:match("^y") then return i18n.t("menu.path_requirement") end
+			return nil
+		end,
+	},
+	-- A level's map settings.
+	mapsetup = {
+		title = "editor_levelmenu_mapsetup",
+		hidden_text = true,
+		items = {
+			islevel = { kind = "radio" }, ismap = { kind = "radio" },
+			reset = { kind = "radio" }, win = { kind = "radio" },
+		},
+		group = function(id, i18n)
+			if id == "islevel" or id == "ismap" then return i18n.game("editor_map_leveltype") end
+			if id:match("^y") then return i18n.game("editor_map_clearlimit") .. " " .. i18n.game("editor_map_clearlimit_hint") end
+			if id == "reset" or id == "win" or id == "changelevel" then return i18n.game("editor_map_returnto") end
+			return nil
+		end,
+		label_of = function(id, i18n)
+			if id ~= "changelevel" then return nil end
+			local name = editor2.strings[CUSTOMPARENTNAME] or ""
+			local parent = editor2.strings[CUSTOMPARENT] or ""
+			if parent == "" or parent == "<win>" or name == "" then return i18n.game("editor_map_selectlevel") end
+			return name
+		end,
+	},
+	-- The map icon slots: sprites only; a slot's custom picture is in the
+	-- level's changes (savechange "Editor_levelnum").
+	iconselect = { label_of = function(id, i18n) return icon_slot(id, i18n) end },
+	icons = { label_of = function(id, i18n) return icon_slot(id, i18n) end },
 	-- The object editor: the object's name line is drawn in a group of its own.
 	objectedit = {
 		title = function(i18n, menu)
@@ -212,8 +318,19 @@ M.menus = {
 	editormenu = {
 		title = "editor_mainmenu",
 	},
+	-- The palette menu: its toolbar answers only clicks, and the tools and
+	-- brushes are radio groups.
 	currobjlist = {
 		title = "editor_objectlist",
+		click = true,
+		items = {
+			tool_normal = { kind = "radio" }, tool_line = { kind = "radio" }, tool_rectangle = { kind = "radio" },
+			tool_fillrectangle = { kind = "radio" }, tool_select = { kind = "radio" }, tool_fill = { kind = "radio" },
+			tool_erase = { kind = "radio" },
+			brush_normal = { kind = "radio" }, brush_level = { kind = "radio" }, brush_path = { kind = "radio" },
+			brush_special = { kind = "radio" }, brush_pathsetup = { name = "menu.pathsetup" },
+			remove = { kind = "toggle" }, editobject = { kind = "toggle" },
+		},
 	},
 	slots_playlevels = {
 		default_value = function(id, i18n)
