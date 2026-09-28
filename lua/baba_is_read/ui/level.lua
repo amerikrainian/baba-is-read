@@ -93,6 +93,9 @@ local function name_lines()
 	local out = {}
 	local name = speech.clean(generaldata and generaldata.strings[LEVELNAME] or "")
 	local number = speech.clean(generaldata and generaldata.strings[LEVELNUMBER_NAME] or "")
+	-- A test run from the editor leaves a placeholder there ("hmhmh").
+	if type(editor) == "table" and (editor.values[E_INEDITOR] == 1 or editor.values[E_INEDITOR] == 2) then number = "" end
+	if number == "_NONE_" then number = "" end
 	if number ~= "" and name ~= "" then out[#out + 1] = i18n.t("level.start_name", number, name)
 	elseif name ~= "" then out[#out + 1] = name
 	elseif number ~= "" then out[#out + 1] = number end

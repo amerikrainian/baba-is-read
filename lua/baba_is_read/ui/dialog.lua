@@ -21,8 +21,9 @@ local function open_dialog()
 	if menu.in_tutorial() then return nil end   -- a tutorial slide over the dialog is ui/menu's
 	local name = editor.strings[MENU]
 	local mf = menufuncs[name]
-	-- "name" is the engine's text entry, read by ui/text_entry.lua.
-	if name == "name" or not mf or mf.structure or generaldata2.values[INMENU] == 1 then return nil end
+	-- "name" is the engine's text entry (ui/text_entry.lua), "editor" the
+	-- editing screen (ui/editor.lua).
+	if name == "name" or name == "editor" or not mf or mf.structure or generaldata2.values[INMENU] == 1 then return nil end
 	return name, mf
 end
 
@@ -84,14 +85,22 @@ end
 
 local release_at = nil   -- { frame =, x =, y = } for the click's second phase
 
-local function activate()
-	local b = buttons[focus]
-	if not b or b.disabled or release_at then return end
-	local cx, cy = to_client(b.x, b.y)
-	if not cx then log.warn("dialog: no client size for a click"); return end
-	log.info("dialog: click %s at logical %d,%d client %d,%d", b.text, math.floor(b.x), math.floor(b.y), cx, cy)
+-- A click at logical (game) coordinates: pressed now, released a few frames
+-- later. Other screens use it for buttons the engine gives no key.
+function M.click(x, y, what)
+	if release_at then return false end
+	local cx, cy = to_client(x, y)
+	if not cx then log.warn("dialog: no client size for a click"); return false end
+	log.info("dialog: click %s at logical %d,%d client %d,%d", tostring(what or ""), math.floor(x), math.floor(y), cx, cy)
 	bridge.click(cx, cy, 0, 1)
 	release_at = { frame = frame_now + 3, x = cx, y = cy }
+	return true
+end
+
+local function activate()
+	local b = buttons[focus]
+	if not b or b.disabled then return end
+	M.click(b.x, b.y, b.text)
 end
 
 function M.tick(frame)

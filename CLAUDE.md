@@ -287,8 +287,9 @@ are ours because the game draws most menus without a name.
 - **Never cache game state.** Read the button objects and tables at speak time.
 - **Reuse game text** (`i18n.game`, `BUTTONTEXT`, `writetext` captures) wherever it exists; every
   mod-authored word lives in `lang/en.lua`, never inline in a speak call.
-- **Readout order**: label, role, value or state, disabled, position. Tooltips are never joined with
-  the focus line (F8).
+- **Readout order**: label, role, value or state, disabled, position, then the tooltip (decided: few
+  buttons have one, all in the editor; an icon button with no text uses its tooltip as its label).
+  F8 still reads the tooltip alone.
 - **No silent failures**: hooks, wrappers and key handlers run through `hooks` (pcall, log, spoken
   once per session up to three times). Never let an error reach the game's Lua error dialog.
 - **Keys**: hotkeys on unbound keys; the game's keys are captured only inside a modal layer that
@@ -347,3 +348,18 @@ are ours because the game draws most menus without a name.
    `dev_enabled` defaults to true, so a release ships the loopback dev server on; restore
    `fullscreen=1` in the user's settings after a dev session (it is set to 0 for the clicks); the
    repository has no remote yet (the installer expects `amerikrainian/baba-is-read`).
+10. **(in progress)** Level editor (`ui/editor.lua` for the editing screen, the menus through
+   `menu_overrides`). Decided: the cursor is the mod's (the game snaps its own to the mouse every
+   frame: `MF_movetileplacer` holds for one frame only, a bare WM_MOUSEMOVE does nothing); edits go
+   through the game's Lua (`placetile_table`, `copytile`, `objectwordswap`, the undo recipe for a
+   turn) and `updateundo_editor()` + `editor3.values[UNSAVED] = 1` after each; Enter places, Delete
+   erases, Alt+arrows face, a tile reads all three layers (current first), Space marks rectangle
+   corners (Escape cancels). The game's own editor keys stay (Tab, Escape, F3, Ctrl+S/Z/1/2/3, I, U,
+   Y, Q, R, F4, Backspace, WASD, Ctrl+Delete) and are listed in the key help (`game_keys` EDITOR,
+   chords posted with their modifiers); F2 opens level settings by a click (the game's F1 is ours).
+   Menus: `menu.lua` reads the number displays an enter creates (`MF_specialcreate` of
+   `Editor_counter`, value `COUNTER_VALUE`, or `Editor_number`, value `TYPE`) as the value of the
+   focused button's row, names stepper signs ("--" is "decrease by more"), reads `row_text` menus'
+   left-of-button text as the label ("Music: Baba, Change music"), names `Editor_objlistbutton`s from
+   `editor_objlist` (the index is also their text); `menu_nav.provide(menu, fn)` lets a module add
+   virtual rows with `activate` (the palette menu's objects).

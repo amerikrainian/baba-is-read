@@ -38,6 +38,7 @@ local mods, speech, i18n, hooks, config, input, log, overrides
 local last = nil          -- last spoken state: { name, target, x, y, key, value, gen, static, group }
 local texts = {}          -- menu name -> { {text=, x=, y=}, ... } static text drawn on entry
 local icons = {}          -- menu name -> { fixed, ... } completion icons created by its enter
+local numbers = {}        -- menu name -> { fixed, ... } number displays created by its enter
 local gen = {}            -- menu name -> how many times its enter has run (a page turn re-runs it)
 local entering = nil      -- the menu whose enter is running
 local paragraph = nil     -- lines collected while text_tuto runs
@@ -93,6 +94,17 @@ local function install_wrappers()
 		end
 		return table.unpack(r, 1, r.n)
 	end)
+	-- The editor's number displays (level size, map and path settings, the
+	-- object editor): objects, not text, read as the value of their row.
+	hooks.wrap("MF_specialcreate", function(orig, what, ...)
+		local r = table.pack(orig(what, ...))
+		if entering and (what == "Editor_counter" or what == "Editor_number") then
+			local list = numbers[entering]
+			if not list then list = {}; numbers[entering] = list end
+			list[#list + 1] = r[1]
+		end
+		return table.unpack(r, 1, r.n)
+	end)
 end
 
 -- Every menu's enter, which the engine also re-runs on its own to turn a
@@ -105,6 +117,7 @@ local function wrap_enters()
 			hooks.wrap_field(mf, "enter", function(orig, ...)
 				texts[name] = {}
 				icons[name] = {}
+				numbers[name] = {}
 				gen[name] = (gen[name] or 0) + 1
 				local outer = entering
 				entering = name
@@ -217,6 +230,9 @@ local function layout(name)
 	local list = boxes(name)
 	if #list == 0 then return out end
 	local margin = (f_tilesize or 24) * 0.5
+	local rows = overrides.menu(name).row_text
+	local tile = f_tilesize or 24
+	out.rows = {}
 	for _, t in ipairs(texts[name] or {}) do
 		local b = owner(list, t.x, t.y, margin, true)
 		if b then
@@ -224,6 +240,19 @@ local function layout(name)
 			local l = out.texts[b.func]
 			if not l then l = {}; out.texts[b.func] = l end
 			l[#l + 1] = t
+		elseif rows then
+			-- A labelled button's row: the label and value text to its left
+			-- (level settings: "Music:", "baba", "Change music").
+			local best = nil
+			for _, c in ipairs(list) do
+				if c.labelled and math.abs(t.y - c.y) < tile * 0.4 and t.x < c.x - c.hw and (not best or c.x < best.x) then best = c end
+			end
+			if best then
+				out.owned[t] = true
+				local l = out.rows[best.func]
+				if not l then l = {}; out.rows[best.func] = l end
+				l[#l + 1] = t
+			end
 		end
 	end
 	for _, id in ipairs(icons[name] or {}) do
@@ -240,6 +269,42 @@ local function layout(name)
 	end
 	return out
 end
+
+-- The number display on a button's row, nearest it: its value, or nil.
+local function row_number(name, target)
+	local list = numbers[name]
+	if not list or #list == 0 then return nil end
+	local b = nil
+	for _, c in ipairs(boxes(name)) do
+		if c.func == target then b = c; break end
+	end
+	if not b then return nil end
+	local tile = f_tilesize or 24
+	local best, bestd = nil, nil
+	for _, id in ipairs(list) do
+		local alive = type(MF_findfixed) ~= "function" or MF_findfixed(id) ~= nil
+		local o = alive and mmf.newObject(id)
+		if o then
+			local oy = (o.values[7] ~= nil and o.values[7] ~= 0) and o.values[7] or o.y
+			local ox = (o.values[6] ~= nil and o.values[6] ~= 0) and o.values[6] or o.x
+			if math.abs(oy - b.y) < tile * 0.5 then
+				local d = math.abs(ox - b.x)
+				if not bestd or d < bestd then
+					best, bestd = o, d
+				end
+			end
+		end
+	end
+	if not best then return nil end
+	if best.className == "Editor_counter" then return tostring(best.values[COUNTER_VALUE]) end
+	return tostring(best.values[TYPE])
+end
+
+-- Stepper buttons drawn as arrows or signs: what they do.
+local STEPS = {
+	["--"] = "menu.step_down_more", ["-"] = "menu.step_down", ["+"] = "menu.step_up", ["++"] = "menu.step_up_more",
+	["<<"] = "menu.step_down_more", ["<"] = "menu.step_down", [">"] = "menu.step_up", [">>"] = "menu.step_up_more",
+}
 
 -- A card's lines in reading order, one part each; a line exactly one tile
 -- under the previous at the same x is a word-wrapped continuation of it.
@@ -342,20 +407,37 @@ function M.describe(state, with_position)
 			parts[#parts + 1] = i18n.t("nav.position", vf.index, vf.count)
 		end
 		local key = table.concat({ state.name, "virtual", vf.row, vf.index, vf.text }, "|")
-		return speech.join(parts), key, nil, vf.label
+		return speech.join(parts), key, nil, nil
 	end
 	local ov = overrides.item(state.name, state.target)
 	local button, slider = find_objects(state.target, state.name)
 	local lay = layout(state.name)
 
 	local label = ""
+	local tip = button and speech.clean(button.strings[BUTTONTOOLTIP]) or ""
 	if button then label = M.expand(speech.clean(button.strings[BUTTONTEXT])) end
+	if STEPS[label] then label = i18n.t(STEPS[label]) end
+	-- The editor's object lists: an index into editor_objlist (the add-object
+	-- list) or "id,name,n" (the palette), drawn as a sprite (its text, when
+	-- it has one, is the index).
+	if button and button.className == "Editor_objlistbutton" then
+		label = M.object_label(state.target)
+	end
 	if label == "" and lay.texts[state.target] then label = card_label(lay.texts[state.target]) end
 	-- The editor's level list buttons (Editor_levelbutton) carry the level's name, drawn only on hover.
 	if label == "" and button then label = speech.clean(button.strings[BUTTONNAME]) end
 	if label == "" and ov.label then label = i18n.game(ov.label) end
 	if label == "" and ov.name then label = i18n.t(ov.name) end
+	-- An icon button's tooltip is its name; any other button's is read last.
+	if label == "" and tip ~= "" then label, tip = tip, "" end
 	label = label:gsub(":%s*$", "")
+	local row = lay.rows and lay.rows[state.target]
+	if row then
+		table.sort(row, function(a, b) return a.x < b.x end)
+		local words = {}
+		for _, t in ipairs(row) do words[#words + 1] = t.text end
+		label = speech.join({ table.concat(words, " "), label })
+	end
 	if label == "" then
 		if state.target == "" then label = i18n.t("nav.no_items")
 		else label = i18n.t("nav.item", state.target) end
@@ -375,6 +457,7 @@ function M.describe(state, with_position)
 	elseif ov.value then
 		value = ov.value(state.target, i18n)
 	end
+	value = value or row_number(state.name, state.target)
 
 	local parts = { label }
 	if config.get("speak_roles") then parts[#parts + 1] = i18n.t("role." .. kind) end
@@ -385,6 +468,7 @@ function M.describe(state, with_position)
 		local index, count = M.position(state)
 		if count > 1 then parts[#parts + 1] = i18n.t("nav.position", index, count) end
 	end
+	if tip ~= "" then parts[#parts + 1] = tip end
 
 	local key = table.concat({ state.name, state.target, state.x, state.y, label, kind, tostring(disabled) }, "|")
 	local group = overrides.menu(state.name).group
@@ -402,6 +486,31 @@ function M.position(state)
 		return nav.index(state, items) or 0, #items
 	end
 	return state.y + 1, state.ydim
+end
+
+-- The text a menu drew, { {text=, x=, y=}, ... } in drawing order (a copy).
+function M.texts_of(name)
+	local out = {}
+	for _, t in ipairs(texts[name] or {}) do out[#out + 1] = t end
+	return out
+end
+
+-- An object's spoken name from the editor's object data: "baba", "baba text".
+function M.object_name(name)
+	name = tostring(name or "")
+	if name:sub(1, 5) == "text_" then return i18n.t("level.text", name:sub(6)) end
+	return name
+end
+
+-- The label of an object list button: its id is an index into
+-- editor_objlist, or "id,name,n" in the palette.
+function M.object_label(id)
+	local n = tonumber(id)
+	if n and type(editor_objlist) == "table" and editor_objlist[n] then
+		return M.object_name(editor_objlist[n].name)
+	end
+	local name = tostring(id):match("^[^,]*,([^,]+),")
+	return name and M.object_name(name) or ""
 end
 
 -- The heading and other static text of a menu, in reading order.

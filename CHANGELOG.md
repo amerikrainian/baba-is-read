@@ -17,6 +17,8 @@
 - Fixed returning to a menu sometimes reading the previous menu's button (e.g. "Nevermind" for Return).
 - The level editor's tutorials are read: slide number, each paragraph whole, and the Continue/Skip buttons.
 - The editor's level list names its levels instead of "unnamed item".
+- Level editor, editing screen: a cursor of the mod's on the arrows reads each tile (all three layers, the current one first); Enter places the current object, Delete erases, Alt+arrows set the facing, C and X copy and cut, O and Shift+O read and swap the current object, P lists the palette, F2 opens level settings, and F, H, T, L read facings, the level state, the words in lines and the object counts. Layer changes, picks, saves and undos (with what they took back) are announced.
+- Level editor menus: icon buttons are named by their tooltips, and every tooltip is read at the end of its button; level settings read each value with its button; number displays (level size) are read as the value of their row, with named steppers; the add-object list and the palette menu name their objects (the palette menu also as a row to pick from); the shortcut list is readable; toggles read on or off; the current music, effect and palette are marked.
 
 ## V0.0.1
 

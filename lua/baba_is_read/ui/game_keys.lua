@@ -94,6 +94,7 @@ local function context()
 	if menu == "credits" then return "credits" end
 	if state.in_puzzle() then return "puzzle" end
 	if state.in_level() and state.is_map() then return "map" end
+	if menu == "editor" and not (type(editor4) == "table" and editor4.values[EDITOR_TUTORIAL] == 1) then return "editor" end
 	if type(editor4) == "table" and editor4.values[EDITOR_TUTORIAL] == 1 and generaldata2.values[INMENU] == 1 then return "menu" end
 	if type(menufuncs) == "table" and menufuncs[menu] then
 		if generaldata2.values[INMENU] == 1 then return "menu" end
@@ -102,7 +103,24 @@ local function context()
 	return nil
 end
 
-local release = nil   -- { vk=, ticks= }: the key to release, and when
+local release = nil   -- { vks = { vk, ... }, ticks= }: the keys to release, and when
+
+-- The editing screen's own keys (hard-coded in the game, not in the settings):
+-- { key spec, label }. The mod's editor layer takes the arrows, Enter,
+-- Delete and a few letters; these are what the game keeps.
+local EDITOR = {
+	{ "tab", "help.game.editor.palette" }, { "escape", "help.game.editor.menu" },
+	{ "F3", "help.game.editor.test" }, { "ctrl+s", "help.game.editor.save" },
+	{ "ctrl+z", "help.game.editor.undo" },
+	{ "ctrl+1", "help.game.editor.layer1" }, { "ctrl+2", "help.game.editor.layer2" }, { "ctrl+3", "help.game.editor.layer3" },
+	{ "i", "help.game.editor.pick_is" }, { "u", "help.game.editor.pick_and" },
+	{ "y", "help.game.editor.pick_not" }, { "q", "help.game.editor.pick_empty" },
+	{ "r", "help.game.editor.add" }, { "F4", "help.game.editor.words" },
+	{ "backspace", "help.game.editor.back" },
+	{ "d", "help.game.editor.shift_right" }, { "a", "help.game.editor.shift_left" },
+	{ "w", "help.game.editor.shift_up" }, { "s", "help.game.editor.shift_down" },
+	{ "ctrl+delete", "help.game.editor.clear" },
+}
 
 local COMMANDABLE = { right = true, left = true, up = true, down = true, idle = true, restart = true }
 
@@ -111,10 +129,23 @@ local function runnable(action, ctx)
 	return ctx == "puzzle" and type(command) == "function" and COMMANDABLE[action] == true
 end
 
+-- A chord: its modifiers down first, released after the key.
+local MOD_VKS = { [1] = 16, [2] = 17, [4] = 18 }
+local function press_chord(vk, mods)
+	if not (bridge and bridge.post_key) then return end
+	local held = {}
+	for bit, mvk in pairs(MOD_VKS) do
+		if mods & bit ~= 0 then bridge.post_key(mvk, 1); held[#held + 1] = mvk end
+	end
+	bridge.post_key(vk, 1)
+	table.insert(held, 1, vk)
+	release = { vks = held, ticks = 3 }
+end
+
 local function press(vk, action, ctx)
 	if bridge and bridge.post_key then
 		bridge.post_key(vk, 1)
-		release = { vk = vk, ticks = 3 }
+		release = { vks = { vk }, ticks = 3 }
 	elseif runnable(action, ctx) then
 		-- The game's own entry point for a level key, by the action's name.
 		command(action)
@@ -127,7 +158,7 @@ function M.tick()
 	if release and bridge and bridge.post_key then
 		release.ticks = release.ticks - 1
 		if release.ticks <= 0 then
-			bridge.post_key(release.vk, 0)
+			for _, vk in ipairs(release.vks) do bridge.post_key(vk, 0) end
 			release = nil
 		end
 	end
@@ -138,6 +169,18 @@ end
 function M.rows(taken)
 	local ctx = context()
 	local out = {}
+	if ctx == "editor" then
+		if not (bridge and bridge.post_key) then return out end
+		for _, a in ipairs(EDITOR) do
+			local vk, mods = input.parse(a[1])
+			if vk and not taken[vk .. ":" .. mods] then
+				out[#out + 1] = { layer = "game", id = "game.editor." .. a[1], label = i18n.t(a[2]),
+					specs = { a[1] }, vk = vk, mods = mods, opts = {},
+					handler = function() press_chord(vk, mods) end }
+			end
+		end
+		return out
+	end
 	if not ctx or type(MF_read) ~= "function" then return out end
 	for _, a in ipairs(CONTEXTS[ctx]) do
 		local action, label_key, fixed = a[1], a[2], a[3]

@@ -130,7 +130,9 @@ function M.layer(name, active, opts)
 end
 
 -- bind(layer, spec, id, handler, opts): handler(event) runs on key down;
--- opts.repeat_ok = true also runs it on auto-repeat; opts.when = function()
+-- opts.repeat_ok = true also runs it on auto-repeat; opts.hidden = true
+-- keeps the key out of the help (one of many keys doing one thing, listed
+-- once under another); opts.when = function()
 -- says whether the key does anything right now (the help lists it only
 -- then; a key whose `when` is false still dispatches, so handlers no-op).
 function M.bind(layer_name, spec, id, handler, opts)
@@ -165,7 +167,7 @@ function M.live()
 				local b = e.b
 				local ok, avail = true, true
 				if b.opts.when then ok, avail = pcall(b.opts.when) end
-				if not ok or not avail then goto continue end
+				if not ok or not avail or b.opts.hidden then goto continue end
 				local row = rows[b.id]
 				if not row then
 					row = { layer = l.name, id = b.id, specs = {}, handler = b.handler, opts = b.opts, vk = b.vk, mods = b.mods }

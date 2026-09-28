@@ -23,8 +23,15 @@ local M = {}
 
 local mods, hooks, input, menu, overrides, i18n
 
--- menu name -> function() returning { { label =, items = { text, ... } }, ... }
+-- menu name -> function() returning { { label =, items = { text, ... },
+-- activate = function(index) or nil }, ... }; a row with `activate` runs it
+-- on Enter or Space, one without repeats the item.
 local providers = {}
+
+-- Lets another module give a menu virtual rows.
+function M.provide(name, fn)
+	providers[name] = fn
+end
 
 local vfocus = nil   -- { menu =, row =, col = } while a virtual item has the focus
 local vcols = {}     -- row -> the column last focused in it (this menu visit)
@@ -190,6 +197,16 @@ function M.attach(m)
 	providers.pause = function()
 		return { { label = i18n.game("rules"), items = m.level_state.rules() } }
 	end
+	-- The editor's shortcut list: the lines column by column.
+	providers.editor_hotkeys = function()
+		local list = menu.texts_of("editor_hotkeys")
+		table.sort(list, function(a, b) if a.x ~= b.x then return a.x < b.x end return a.y < b.y end)
+		local items = {}
+		for _, t in ipairs(list) do
+			if t.text ~= "" then items[#items + 1] = t.text end
+		end
+		return { { label = i18n.t("menu.shortcuts"), items = items } }
+	end
 	input.layer("menu_list", M.active)
 	local opts = { repeat_ok = true }
 	input.bind("menu_list", "down", "menu.next_row", function() move_row(1) end, opts)
@@ -199,8 +216,14 @@ function M.attach(m)
 	-- A virtual item cannot be pressed: the keys that would press the button
 	-- under the engine's cursor are taken and repeat the item instead.
 	input.layer("menu_virtual", M.virtual_active)
-	input.bind("menu_virtual", "enter", "menu.virtual_enter", function() menu.announce_focus(true) end)
-	input.bind("menu_virtual", "space", "menu.virtual_space", function() menu.announce_focus(true) end)
+	local function press()
+		local state = menu.current()
+		local vf = state and M.virtual_focus(state.name)
+		local row = vf and M.virtual_rows(state.name)[vf.row]
+		if row and row.activate then row.activate(vf.index) else menu.announce_focus(true) end
+	end
+	input.bind("menu_virtual", "enter", "menu.virtual_enter", press)
+	input.bind("menu_virtual", "space", "menu.virtual_space", press)
 end
 
 return M

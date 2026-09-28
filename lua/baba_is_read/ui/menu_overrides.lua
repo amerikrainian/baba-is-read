@@ -24,6 +24,8 @@
 --           spoken when the focus moves into another group
 --   order = function(id) returning a rank; list navigation walks the items
 --           by rank, reading order within one
+--   row_text = true: text drawn left of a labelled button on its row is read
+--           before the button's label (a label and its current value)
 local M = {}
 
 -- Items shared by every menu: the page arrows of the paged lists.
@@ -100,6 +102,77 @@ M.menus = {
 			local c = history_column(id)
 			return c == "a" and 1 or c == "b" and 2 or 0
 		end,
+	},
+	-- The level editor.
+	editor_start_settings = {
+		title = "editor_start_settings",
+		items = {
+			editor_settings_tips = { kind = "toggle" },
+			editor_settings_slide = { kind = "toggle" },
+			editor_settings_music = { kind = "toggle" },
+			editor_settings_advanced = { kind = "toggle" },
+			editor_settings_mod = { kind = "toggle" },
+		},
+	},
+	editor_start_settings_help = {
+		title = "editor_settings_help",
+	},
+	-- The shortcut lines are text in columns, read as a strip (menu_nav).
+	editor_hotkeys = {
+		title = "editor_settings_hotkeys",
+		hidden_text = true,
+		items = {
+			editor = { kind = "radio" }, currobjlist = { kind = "radio" },
+			levellist = { kind = "radio" }, misc = { kind = "radio" },
+			keyboard = { kind = "radio" }, gamepad = { kind = "radio" },
+		},
+	},
+	-- Each row: a label and the current value, then the button that changes it.
+	editorsettingsmenu = {
+		title = "editor_settingsmenu",
+		row_text = true,
+		items = {
+			disableparticles = { kind = "toggle" },
+			disableruleeffect = { kind = "toggle" },
+			disableshake = { kind = "toggle" },
+			autodelay = { kind = "slider", label = "editor_levelmenu_autodelay" },
+		},
+	},
+	levelsize = {
+		group = function(id, i18n)
+			if id:sub(1, 1) == "w" then return i18n.game("editor_levelsize_width") end
+			if id:sub(1, 1) == "h" then return i18n.game("editor_levelsize_height") end
+			return nil
+		end,
+	},
+	-- The level's music, effect and palette lists: the level's own marked.
+	musicload = {
+		default_value = function(id, i18n)
+			local file = id:match("^([^,]+)%.ogg,")
+			if file and file == editor2.strings[LEVELMUSIC] then return i18n.t("state.current") end
+			return nil
+		end,
+	},
+	particlesload = {
+		default_value = function(id, i18n)
+			local now = editor2.strings[LEVELPARTICLES]
+			if now == "" then now = "none" end
+			if id == now then return i18n.t("state.current") end
+			return nil
+		end,
+	},
+	paletteload = {
+		default_value = function(id, i18n)
+			local file = id:match("^([^,]+)%.png,")
+			if file and type(MF_getpalettename) == "function" and file == MF_getpalettename() then return i18n.t("state.current") end
+			return nil
+		end,
+	},
+	editormenu = {
+		title = "editor_mainmenu",
+	},
+	currobjlist = {
+		title = "editor_objectlist",
 	},
 	slots_playlevels = {
 		default_value = function(id, i18n)
