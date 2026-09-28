@@ -380,12 +380,21 @@ function M.current()
 	if generaldata2.values[INMENU] ~= 1 then return nil end
 	local x = editor2.values[MENU_XPOS]
 	local y = editor2.values[MENU_YPOS]
-	if not slide and type(menusetx) == "function" then
-		local ok, cx = pcall(menusetx)
-		if ok and type(cx) == "number" then x = cx end
-	end
+	-- The game names its selection in MENUOPTION; the item of that id on the
+	-- cursor's row is the focus. Otherwise the cursor's column, clamped to the
+	-- row (menusetx is not it: it snaps to a row's default column).
 	local ok, target, xdim, ydim = pcall(M.locate, name, x, y)
 	if not ok then return nil end
+	local opt = not slide and editor2.strings[MENUOPTION] or ""
+	if opt ~= "" and target ~= opt and (xdim or 0) > 1 then
+		for cx = 0, xdim - 1 do
+			if M.locate(name, cx, y) == opt then x, target = cx, opt; break end
+		end
+	elseif (xdim or 0) > 0 and x > xdim - 1 then
+		x = xdim - 1
+		ok, target, xdim, ydim = pcall(M.locate, name, x, y)
+		if not ok then return nil end
+	end
 	local state = { name = name, page = slide, x = x, y = y, xdim = xdim or 0, ydim = ydim or 0, target = target or "" }
 	if mods.menu_nav then state.virtual = mods.menu_nav.virtual_focus(name) end
 	return state
