@@ -22,7 +22,7 @@
 -- allowed) to an anchor: where the cursor stood before the first switch of a
 -- run, so switching back and forth is stable; any other cursor movement
 -- moves the anchor with it. A switch says the category or kind and its
--- count first, except with a single entry: then only the landing, in full.
+-- count first, the name alone for a single entry.
 -- Ctrl+arrows skip a run of identical
 -- tiles: the cursor lands on the first tile in that direction whose contents
 -- differ from the tile it stands on, or on the last tile of the run when the
@@ -239,9 +239,8 @@ local function jump_line(delta)
 end
 
 -- After a category or kind switch: the cursor lands on the entry nearest the
--- anchor, and period/comma continue from it. Returns the entry's line, with
--- its full label when `full` (no header said the kind).
-local function land_line(full)
+-- anchor, and period/comma continue from it. Returns the entry's line.
+local function land_line()
 	local entries = entries_now()
 	if #entries == 0 then return i18n.t("level.no_objects") end
 	if not anchor then anchor = { x = cx, y = cy } end
@@ -253,14 +252,14 @@ local function land_line(full)
 	jump_index = bi
 	local e = entries[bi]
 	cx, cy = e.x, e.y
-	return speech.join({ state.pos_text(cx, cy), full and e.label or entry_label(e) })
+	return speech.join({ state.pos_text(cx, cy), entry_label(e) })
 end
 
--- A switch's lines: the header (name, count), then the landing. A single
--- entry is the landing alone, read in full: its own line names it.
+-- A switch's lines: the header (name, count; the name alone for a single
+-- entry), then the landing.
 local function switched(name, count)
-	if count == 1 then return { land_line(true) } end
-	return { i18n.t("cat.switched", name, count), land_line() }
+	local header = count == 1 and i18n.t("cat.switched_one", name) or i18n.t("cat.switched", name, count)
+	return { header, land_line() }
 end
 
 local function jump(delta)
@@ -289,7 +288,7 @@ end
 
 -- Shift+period / Shift+comma: the next or previous kind within the category,
 -- "all" first in the cycle. Announces the kind and its count, then lands on
--- the entry of it nearest the anchor (a kind of one: the landing alone).
+-- the entry of it nearest the anchor.
 local function switch_kind(delta)
 	if CATEGORIES[category] == "rules" then return end
 	local names, counts, spoken = kinds_now()

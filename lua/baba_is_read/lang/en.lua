@@ -94,6 +94,7 @@ return {
 	["cat.levels"] = "levels",
 	["cat.markers"] = "markers",
 	["cat.switched"] = "{0}, {1}",          -- category name, entry count
+	["cat.switched_one"] = "{0}",           -- category name, a single entry
 	["kind.all"] = "all",                   -- Shift+period/comma: no kind chosen
 
 	-- Markers (slash, Shift+slash, Ctrl+Shift+slash)
