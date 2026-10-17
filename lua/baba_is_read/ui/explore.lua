@@ -21,7 +21,9 @@
 -- nearest (Manhattan distance, ties in reading order, the cursor's own tile
 -- allowed) to an anchor: where the cursor stood before the first switch of a
 -- run, so switching back and forth is stable; any other cursor movement
--- moves the anchor with it. Ctrl+arrows skip a run of identical
+-- moves the anchor with it. A switch says the category or kind and its
+-- count first, except with a single entry: then only the landing, in full.
+-- Ctrl+arrows skip a run of identical
 -- tiles: the cursor lands on the first tile in that direction whose contents
 -- differ from the tile it stands on, or on the last tile of the run when the
 -- run reaches the edge. Home returns the cursor to the player, or to the
@@ -237,8 +239,9 @@ local function jump_line(delta)
 end
 
 -- After a category or kind switch: the cursor lands on the entry nearest the
--- anchor, and period/comma continue from it. Returns the entry's line.
-local function land_line()
+-- anchor, and period/comma continue from it. Returns the entry's line, with
+-- its full label when `full` (no header said the kind).
+local function land_line(full)
 	local entries = entries_now()
 	if #entries == 0 then return i18n.t("level.no_objects") end
 	if not anchor then anchor = { x = cx, y = cy } end
@@ -250,7 +253,14 @@ local function land_line()
 	jump_index = bi
 	local e = entries[bi]
 	cx, cy = e.x, e.y
-	return speech.join({ state.pos_text(cx, cy), entry_label(e) })
+	return speech.join({ state.pos_text(cx, cy), full and e.label or entry_label(e) })
+end
+
+-- A switch's lines: the header (name, count), then the landing. A single
+-- entry is the landing alone, read in full: its own line names it.
+local function switched(name, count)
+	if count == 1 then return { land_line(true) } end
+	return { i18n.t("cat.switched", name, count), land_line() }
 end
 
 local function jump(delta)
@@ -270,7 +280,7 @@ local function switch_category(delta)
 			category = i
 			kind = nil
 			jump_index = 0
-			speech.speak_lines({ i18n.t("cat.switched", i18n.t("cat." .. CATEGORIES[i]), count), land_line() })
+			speech.speak_lines(switched(i18n.t("cat." .. CATEGORIES[i]), count))
 			return
 		end
 	end
@@ -279,7 +289,7 @@ end
 
 -- Shift+period / Shift+comma: the next or previous kind within the category,
 -- "all" first in the cycle. Announces the kind and its count, then lands on
--- the entry of it nearest the anchor.
+-- the entry of it nearest the anchor (a kind of one: the landing alone).
 local function switch_kind(delta)
 	if CATEGORIES[category] == "rules" then return end
 	local names, counts, spoken = kinds_now()
@@ -293,15 +303,13 @@ local function switch_kind(delta)
 	end
 	i = ((i - 1 + delta) % n) + 1
 	jump_index = 0
-	local header
 	if i == 1 then
 		kind = nil
-		header = i18n.t("cat.switched", i18n.t("kind.all"), #entries_for(CATEGORIES[category]))
+		speech.speak_lines(switched(i18n.t("kind.all"), #entries_for(CATEGORIES[category])))
 	else
 		kind = names[i - 1]
-		header = i18n.t("cat.switched", spoken[kind], counts[kind])
+		speech.speak_lines(switched(spoken[kind], counts[kind]))
 	end
-	speech.speak_lines({ header, land_line() })
 end
 
 -- Slash: a marker on the cursor's tile, numbered after the level's last.
