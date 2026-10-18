@@ -41,7 +41,7 @@ local pending = {}        -- lines to flush ahead of the next turn line
 local before = nil        -- { key = <command>, you = { [fixed] = {x, y, name} }, cursor = {fixed, x, y} } from command_given
 local held = {}           -- game vk -> true: forwarded presses not yet released
 local cursor_seen = nil   -- the map cursor after the last announced turn, for the undo line
-local known_rules = nil   -- set of rule strings at the last announcement
+local known_rules = nil   -- rule text -> blocked, at the last announcement
 local announce_start = false
 local undo_delay = nil    -- frames to wait before speaking an undo (rules re-parse after the hook)
 local win_wait = nil      -- frames left before "win" is spoken without its turn's line (level_win fires first)
@@ -54,24 +54,34 @@ local function you_snapshot()
 	return snap
 end
 
+-- Rule text -> blocked; a rule written twice is blocked only if both are.
 local function rules_set()
 	local set = {}
-	for _, r in ipairs(state.rules()) do set[r] = true end
+	for _, e in ipairs(state.rule_entries()) do
+		set[e.text] = (set[e.text] ~= false) and e.blocked
+	end
 	return set
 end
 
 -- Rule changes since the last announcement, as lines. The game re-parses
 -- rules several times per turn, so the diff is taken once, here, against the
 -- set spoken last: a rule that breaks and re-forms within a turn is no change.
+-- A rule that stays but gets blocked or freed by another rule says so.
 local function rule_changes()
 	local out = {}
 	if not known_rules then return out end
 	local now = rules_set()
-	for r in pairs(now) do
-		if not known_rules[r] then out[#out + 1] = i18n.t("level.rule_added", r) end
+	for r, blocked in pairs(now) do
+		local was = known_rules[r]
+		if was == nil then
+			local text = blocked and i18n.t("level.rule_blocked", r) or r
+			out[#out + 1] = i18n.t("level.rule_added", text)
+		elseif was ~= blocked then
+			out[#out + 1] = i18n.t(blocked and "level.rule_now_blocked" or "level.rule_unblocked", r)
+		end
 	end
 	for r in pairs(known_rules) do
-		if not now[r] then out[#out + 1] = i18n.t("level.rule_removed", r) end
+		if now[r] == nil then out[#out + 1] = i18n.t("level.rule_removed", r) end
 	end
 	known_rules = now
 	return out

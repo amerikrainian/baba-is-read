@@ -49,6 +49,9 @@ return {
 	["level.you_count"] = "{0} you",
 	["level.rule_added"] = "new: {0}",
 	["level.rule_removed"] = "gone: {0}",
+	["level.rule_blocked"] = "{0}, blocked",        -- a rule, or a word, the game crosses out
+	["level.rule_now_blocked"] = "blocked: {0}",    -- an existing rule another rule now overrides
+	["level.rule_unblocked"] = "unblocked: {0}",
 	["level.no_rules"] = "no rules",
 	["level.none"] = "not in a level",
 	["level.edge"] = "edge",

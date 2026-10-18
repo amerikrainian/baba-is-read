@@ -161,6 +161,7 @@ end
 -- closed gate, a control hint. Empty string for nothing worth saying.
 function M.describe_tile(x, y, exclude)
 	local groups, order, icons = {}, {}, {}
+	local crossed = M.blocked_units()
 	for _, u in ipairs(M.units_at(x, y)) do
 		local skip = (exclude ~= nil and u.fixed == exclude.fixed)
 		if not skip and not config.get("speak_inert") and M.is_inert(u) then skip = true end
@@ -169,10 +170,10 @@ function M.describe_tile(x, y, exclude)
 			skip = true
 		end
 		if not skip then
-			local n, float = M.name_of(u), M.is_floating(u)
-			local key = n .. (float and "\1" or "")
+			local n, float, blocked = M.name_of(u), M.is_floating(u), crossed[u.fixed] == true
+			local key = n .. (float and "\1" or "") .. (blocked and "\2" or "")
 			if not groups[key] then
-				groups[key] = { name = n, float = float, count = 0 }
+				groups[key] = { name = n, float = float, blocked = blocked, count = 0 }
 				order[#order + 1] = key
 			end
 			groups[key].count = groups[key].count + 1
@@ -182,7 +183,8 @@ function M.describe_tile(x, y, exclude)
 	for _, key in ipairs(order) do
 		local g = groups[key]
 		local text = g.count > 1 and i18n.t("level.count", g.name, g.count) or g.name
-		parts[#parts + 1] = g.float and i18n.t("level.float", text) or text
+		if g.float then text = i18n.t("level.float", text) end
+		parts[#parts + 1] = g.blocked and i18n.t("level.rule_blocked", text) or text
 	end
 	for _, t in ipairs(icons) do parts[#parts + 1] = t end
 	if #icons == 0 and M.path_at(x, y) then parts[#parts + 1] = i18n.t("map.path") end
@@ -253,15 +255,93 @@ local function rule_text(r)
 end
 M.rule_text = rule_text
 
+-- Blocked rules. A rule another rule overrides keeps its place in `features`
+-- with a "never" condition added (postrules: "baba is baba" protects baba
+-- from "baba is box", "baba is not box" cancels "baba is box"), and the
+-- game's ruleblockeffect crosses out its words. `visualfeatures` holds
+-- copies made before that (copyrule), so the state is read from `features`.
+local function never(conds)
+	if type(conds) ~= "table" then return false end
+	if conds[1] == "never" then return true end
+	for _, c in ipairs(conds) do
+		if type(c) == "table" and c[1] == "never" then return true end
+	end
+	return false
+end
+
+-- A rule's identity across the two tables: its triple and the text units it
+-- was read from (%.17g: the ids are floats near 1e154 and round-trip only
+-- at 17 digits).
+local function rule_key(r)
+	local ids = {}
+	for _, group in ipairs(type(r[3]) == "table" and r[3] or {}) do
+		for _, id in ipairs(type(group) == "table" and group or { group }) do
+			ids[#ids + 1] = string.format("%.17g", id)
+		end
+	end
+	table.sort(ids)
+	return table.concat(r[1], "\1") .. "\2" .. table.concat(ids, ",")
+end
+
+-- Per rule key, whether every parsed rule with that key is blocked.
+local function blocked_keys()
+	local out = {}
+	if type(features) ~= "table" then return out end
+	for _, r in ipairs(features) do
+		if type(r[1]) == "table" and #r[1] == 3 then
+			local key = rule_key(r)
+			out[key] = (out[key] ~= false) and never(r[2])
+		end
+	end
+	return out
+end
+
+function M.rule_blocked(r)
+	return blocked_keys()[rule_key(r)] == true
+end
+
+-- The text units the game crosses out, as a set of fixed ids: those whose
+-- every rule is blocked (ruleblockeffect marks a word for a blocked rule and
+-- takes the mark off for any working rule sharing it).
+function M.blocked_units()
+	local mark = {}
+	if type(features) ~= "table" then return {} end
+	for _, r in ipairs(features) do
+		local blocked = never(r[2])
+		for _, group in ipairs(type(r[3]) == "table" and r[3] or {}) do
+			for _, id in ipairs(type(group) == "table" and group or { group }) do
+				if not blocked then mark[id] = false
+				elseif mark[id] == nil then mark[id] = true end
+			end
+		end
+	end
+	local out = {}
+	for id, m in pairs(mark) do if m then out[id] = true end end
+	return out
+end
+
+-- Active rules as { text =, blocked = }, in the game's pause screen order.
+function M.rule_entries()
+	local out = {}
+	if type(visualfeatures) ~= "table" then return out end
+	local blocked = blocked_keys()
+	for _, r in ipairs(visualfeatures) do
+		if type(r[1]) == "table" and #r[1] == 3 then
+			out[#out + 1] = { text = rule_text(r), blocked = blocked[rule_key(r)] == true }
+		end
+	end
+	return out
+end
+
 -- Active rules as spoken lines, in the order and the wording of the game's
 -- pause screen: one line per parsed rule, so BABA IS YOU AND SINK on the
 -- board is "baba is you" and "baba is sink" here (a rule change is then the
--- one rule that came or went). The board wording is M.sentences().
+-- one rule that came or went), a blocked one marked. The board wording is
+-- M.sentences().
 function M.rules()
 	local out = {}
-	if type(visualfeatures) ~= "table" then return out end
-	for _, r in ipairs(visualfeatures) do
-		if type(r[1]) == "table" and #r[1] == 3 then out[#out + 1] = rule_text(r) end
+	for _, e in ipairs(M.rule_entries()) do
+		out[#out + 1] = e.blocked and i18n.t("level.rule_blocked", e.text) or e.text
 	end
 	return out
 end
@@ -273,13 +353,15 @@ end
 -- one row or column and sharing a unit are one sentence, its words in board
 -- order. A sentence crossing another shares a word with it but not a line,
 -- so the two stay apart. Returns { words = "baba is you and sink",
--- units = {...}, x =, y = } per sentence, x, y its first word's tile, in the
--- order the game lists the rules.
+-- units = {...}, x =, y =, blocked = } per sentence, x, y its first word's
+-- tile, blocked when every rule in it is, in the order the game lists the
+-- rules.
 function M.sentences()
 	local out = {}
 	if type(visualfeatures) ~= "table" then return out end
 	-- Each parsed rule with its visible units and the line it lies on.
 	local entries = {}
+	local blocked = blocked_keys()
 	for _, r in ipairs(visualfeatures) do
 		if type(r[3]) == "table" then
 			local units_, seen = {}, {}
@@ -302,7 +384,7 @@ function M.sentences()
 			end
 			if #units_ > 0 and (same_row or same_col) then
 				local line = same_row and ("r" .. tostring(row)) or ("c" .. tostring(col))
-				entries[#entries + 1] = { units = units_, line = line, vertical = not same_row }
+				entries[#entries + 1] = { units = units_, line = line, vertical = not same_row, blocked = blocked[rule_key(r)] == true }
 			end
 		end
 	end
@@ -329,10 +411,11 @@ function M.sentences()
 		local root = find(i)
 		local g = groups[root]
 		if not g then
-			g = { units = {}, seen = {}, vertical = e.vertical }
+			g = { units = {}, seen = {}, vertical = e.vertical, blocked = true }
 			groups[root] = g
 			order[#order + 1] = root
 		end
+		if not e.blocked then g.blocked = false end
 		for _, u in ipairs(e.units) do
 			if not g.seen[u.fixed] then g.seen[u.fixed] = true; g.units[#g.units + 1] = u end
 		end
@@ -348,7 +431,7 @@ function M.sentences()
 			words[#words + 1] = tostring(u.strings[UNITNAME] or ""):gsub("^text_", "")
 		end
 		local first = g.units[1]
-		out[#out + 1] = { words = table.concat(words, " "), units = g.units, x = first.values[XPOS], y = first.values[YPOS] }
+		out[#out + 1] = { words = table.concat(words, " "), units = g.units, x = first.values[XPOS], y = first.values[YPOS], blocked = g.blocked }
 	end
 	return out
 end
@@ -394,7 +477,9 @@ function M.reading_entries(exclude, category)
 	for _, r in ipairs(M.sentences()) do
 		for _, u in ipairs(r.units) do in_rule[u.fixed] = true end
 		if category ~= "objects" then
-			out[#out + 1] = { x = r.x, y = r.y, label = i18n.t("level.text", r.words) }
+			local label = i18n.t("level.text", r.words)
+			if r.blocked then label = i18n.t("level.rule_blocked", label) end
+			out[#out + 1] = { x = r.x, y = r.y, label = label }
 		end
 	end
 	for _, u in ipairs(units or {}) do
