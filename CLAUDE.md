@@ -203,8 +203,13 @@ hooks, and rules from the `features` tables.
   string is read with its names (`done`). Facing changes (decided: announced) come from the same update
   records' old and new DIR: turned in place ("turned keke up"), turned while moving ("moved skull
   left"), and the player's line adds "facing x" when it ends facing other than the way it was
-  sent; only for `shows_facing` units, like F. The player's line takes the unit the command drove
-  (command_given's player 2 = "you2") that moved, and says how it was moved beyond its step.
+  sent; only for `shows_facing` units, like F. The player's line speaks for the LEAD (`level_state.lead_unit`: one player
+  unit kept by `values[ID]`, which undo restores, so several "you" units do not trade the line;
+  the first player by default, backslash picks it; a lost lead hands over to the player nearest
+  where it stood, "new lead", and comes back with an undo), else for the first unit the command
+  drove (command_given's player 2 = "you2") that moved, and says how it was moved beyond its step;
+  the other driven players follow as one count line ("37 others: 29 moved, 8 blocked"). The
+  reading cursor, Home, C and H follow the lead too.
   Empty tiles are never listed: under "empty is you" (`level_state.empty_is_you`, the game's
   `findallfeature` per-tile result) the turn is its other lines alone, "empty" when there are none,
   and "empty" stands in for the position (start, H, C, undo, Home); "empty is flag" fills are
@@ -294,7 +299,8 @@ passability, locked; decided), and an entry read within its kind leaves that kin
 other cursor move, so switching back and forth is stable), slash places "marker n" on the cursor's
 tile (per level, in memory for the session; Shift+slash clears the tile's, Ctrl+Shift+slash all;
 a marker is read as tile contents and stops the skip), Home parks the cursor on the player, or on
-the map cursor without one (the cursor follows the same unit as it moves), F the facing of the cursor tile's objects (only those whose
+the map cursor without one (the cursor follows the same unit as it moves, always, wherever the
+reading cursor was; decided), backslash makes the player on the cursor's tile the lead ("lead"), F the facing of the cursor tile's objects (only those whose
 sprite shows it, `level_state.shows_facing`: tiling 0, 2, 3; hidden facing stays hidden, parity
 with sighted play, decided), C the player's coordinates alone (the map cursor's without a player), T the rules,
 H where you are and, on a map, the progress counters (the counters alone without a player), N the object counts (in the editor too).

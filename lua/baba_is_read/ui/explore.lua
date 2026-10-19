@@ -28,7 +28,9 @@
 -- differ from the tile it stands on, or on the last tile of the run when the
 -- run reaches the edge. Home returns the cursor to the player, or to the
 -- game's map cursor where there is no player; the cursor follows the same
--- one as it moves.
+-- one as it moves. With several players that is the lead
+-- (level_state.lead_unit), and backslash makes the player on the cursor's
+-- tile the lead.
 --
 -- F reads the facing of what stands on the cursor's tile, "baba, right",
 -- for objects whose sprite shows it (level_state.shows_facing), the way a
@@ -98,9 +100,29 @@ local function say_tile(prefix)
 	speech.speak(table.concat(parts, ", "), true)
 end
 
--- What the cursor parks on and follows: the player, else the game's map cursor.
+-- What the cursor parks on and follows: the lead player, else the game's map cursor.
 local function home_unit()
-	return state.you_units()[1] or state.cursor_unit()
+	return state.lead_unit() or state.cursor_unit()
+end
+
+-- The player units on the cursor's tile.
+local function players_here()
+	local out = {}
+	for _, u in ipairs(state.you_units()) do
+		if u.values[XPOS] == cx and u.values[YPOS] == cy then out[#out + 1] = u end
+	end
+	return out
+end
+
+-- Backslash: the player on the cursor's tile becomes the lead, the one the
+-- turn line speaks for and the cursor follows (the first, if several stand
+-- there). No player here: nothing (the key help leaves it out).
+local function make_lead()
+	local u = players_here()[1]
+	if not u then return end
+	state.set_lead(u)
+	last_you = cx .. "," .. cy
+	speech.speak(i18n.t("level.lead"), true)
 end
 
 local function park_on_player()
@@ -381,8 +403,8 @@ function M.tick()
 		park_on_player()
 		return
 	end
-	-- Follow the player (or the map cursor): after a move (or an undo) the
-	-- cursor is where they are.
+	-- Follow the lead player (or the map cursor): after a move (or an undo)
+	-- the cursor is where it is.
 	local u = home_unit()
 	if u then
 		local now = u.values[XPOS] .. "," .. u.values[YPOS]
@@ -420,6 +442,7 @@ function M.attach(m)
 		park_on_player(); say_tile()
 	end)
 	input.bind("explore", "f", "explore.facing", say_facing, { when = function() return #facing_lines() > 0 end })
+	input.bind("explore", "backslash", "explore.lead", make_lead, { when = function() return #players_here() > 0 end })
 	input.bind("explore", "slash", "explore.mark", place_marker)
 	input.bind("explore", "shift+slash", "explore.unmark", clear_marker, { when = has_marker_here })
 	input.bind("explore", "ctrl+shift+slash", "explore.unmark_all", clear_all_markers, { when = has_markers })

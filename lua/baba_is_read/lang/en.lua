@@ -49,6 +49,13 @@ return {
 	["level.empty_you"] = "empty",          -- "empty is you": the player has no tile
 	["level.empty"] = "empty",              -- an empty tile that blocked a move ("empty is stop")
 	["level.you_count"] = "{0} you",
+	["level.lead"] = "lead",                -- backslash: this player is now the one followed
+	["level.lead_new"] = "new lead",        -- the lead was lost and another player took over
+	["level.others_mixed"] = "{0} others: {1} moved, {2} blocked",   -- the other players this turn
+	["level.others_moved"] = "{0} others moved",
+	["level.others_blocked"] = "{0} others blocked",
+	["level.other_moved"] = "the other moved",
+	["level.other_blocked"] = "the other blocked",
 	["level.rule_added"] = "new: {0}",
 	["level.rule_removed"] = "gone: {0}",
 	["level.rule_blocked"] = "{0}, blocked",        -- a rule, or a word, the game crosses out
@@ -177,6 +184,7 @@ return {
 	["help.explore.prev_kind"] = "previous kind",
 	["help.explore.home"] = "cursor to the player, or to the map cursor",
 	["help.explore.facing"] = "facing of the cursor tile",
+	["help.explore.lead"] = "make the player here the lead",
 	["help.explore.mark"] = "place a marker",
 	["help.explore.unmark"] = "clear the marker here",
 	["help.explore.unmark_all"] = "clear every marker",
@@ -284,6 +292,7 @@ return {
 	["key.period"] = "period",
 	["key.comma"] = "comma",
 	["key.slash"] = "slash",
+	["key.backslash"] = "backslash",
 	["key.leftbracket"] = "left bracket",
 	["key.rightbracket"] = "right bracket",
 	["key.backspace"] = "Backspace",

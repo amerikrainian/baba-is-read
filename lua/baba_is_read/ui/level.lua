@@ -96,17 +96,26 @@ local function flush(line, interrupt, after)
 	for _, p in ipairs(pending) do parts[#parts + 1] = p end
 	pending = {}
 	if line and line ~= "" then parts[#parts + 1] = line end
-	if after and after ~= "" then parts[#parts + 1] = after end
+	if type(after) ~= "table" then after = { after } end
+	for _, a in ipairs(after) do
+		if a ~= "" then parts[#parts + 1] = a end
+	end
 	speech.speak_lines(parts, interrupt)
 	return #parts
 end
 
+-- "new lead" when the lead was lost and another player took over.
+local function lead_line()
+	return state.take_lead_replaced() and i18n.t("level.lead_new") or nil
+end
+
 -- The line for where the player is now: "<name>[, float], col, row[, contents]"
 -- with the name only when asked for or changed (a float change counts, since
--- it decides what the player can touch).
-local function where_line(with_name, prev, unit)
+-- it decides what the player can touch). The player is the lead; with several
+-- the count follows, except in a turn line (its others line says it).
+local function where_line(with_name, prev, unit, no_count)
 	local you = state.you_units()
-	local u = unit or you[1]
+	local u = unit or state.lead_unit()
 	if not u then return state.no_you_text() end
 	local x, y = u.values[XPOS], u.values[YPOS]
 	local name = state.label_of(u)
@@ -119,7 +128,7 @@ local function where_line(with_name, prev, unit)
 	end
 	local here = state.describe_tile(x, y, u)
 	if here ~= "" then parts[#parts + 1] = here end
-	if #you > 1 then parts[#parts + 1] = i18n.t("level.you_count", #you) end
+	if #you > 1 and not no_count then parts[#parts + 1] = i18n.t("level.you_count", #you) end
 	return table.concat(parts, ", ")
 end
 
@@ -200,6 +209,25 @@ local function cursor_line(snap_cursor, you)
 	return speech.join(parts)
 end
 
+-- The other players this command drove, after the line for one of them:
+-- "37 others: 29 moved, 8 blocked", "37 others moved", "the other blocked".
+-- Players made this turn are not counted (the events name them); an auto
+-- turn says nothing when none of them moved.
+local function others_line(driven, u, snap, auto)
+	local moved, stayed = 0, 0
+	for _, v in ipairs(driven) do
+		local p = snap[v.fixed]
+		if v.fixed ~= u.fixed and p then
+			if p.x ~= v.values[XPOS] or p.y ~= v.values[YPOS] then moved = moved + 1 else stayed = stayed + 1 end
+		end
+	end
+	local n = moved + stayed
+	if n == 0 or (auto and moved == 0) then return nil end
+	if stayed == 0 then return i18n.t(n == 1 and "level.other_moved" or "level.others_moved", n) end
+	if moved == 0 then return i18n.t(n == 1 and "level.other_blocked" or "level.others_blocked", n) end
+	return i18n.t("level.others_mixed", n, moved, stayed)
+end
+
 local function on_turn_end(extra)
 	if not state.in_level() then return end
 	local key = before and before.key
@@ -225,18 +253,28 @@ local function on_turn_end(extra)
 	if #you == 0 then flush(i18n.t("level.no_you"), true); return end
 	-- The units this command drives: player 2 (the game's second key set
 	-- while there is a "you2") moves "you2", player 1 "you". The line is the
-	-- first of them that moved, named when several kinds are controlled.
+	-- lead's when the command drives it, else the first of them that moved,
+	-- named when several kinds are controlled; the rest are counted after it.
 	local driven = you
 	if type(getunitswitheffect) == "function" then
 		local effect = (player == 2 and featureindex["you2"] ~= nil) and "you2" or "you"
 		local ok, list = pcall(getunitswitheffect, effect, true)
 		if ok and type(list) == "table" and #list > 0 then driven = list end
 	end
-	local u = driven[1]
+	local lead = state.lead_unit()
+	local u = nil
 	for _, v in ipairs(driven) do
-		local p = snap[v.fixed]
-		if not p or p.x ~= v.values[XPOS] or p.y ~= v.values[YPOS] then u = v; break end
+		if lead and v.fixed == lead.fixed then u = v; break end
 	end
+	if not u then
+		u = driven[1]
+		for _, v in ipairs(driven) do
+			local p = snap[v.fixed]
+			if not p or p.x ~= v.values[XPOS] or p.y ~= v.values[YPOS] then u = v; break end
+		end
+	end
+	local new_lead = lead_line()
+	if new_lead then pending[#pending + 1] = new_lead end
 	local names = {}
 	for _, v in ipairs(you) do names[state.label_of(v)] = true end
 	local several = next(names, next(names)) ~= nil
@@ -261,15 +299,19 @@ local function on_turn_end(extra)
 		if type(hasfeature) == "function" and hasfeature(u.strings[UNITNAME], "is", "3d", u.fixed) then return l end
 		return speech.join({ l, i18n.t("level.facing", state.facing_word(u)) })
 	end
+	local others = nil
 	if auto then
-		line = moved and with_how(where_line(several, prev, u)) or ""
+		line = moved and with_how(where_line(several, prev, u, true)) or ""
+		others = others_line(driven, u, snap, true)
 	elseif dir == nil or dir > 4 then
 		line = nil
 	elseif dir == 4 then
 		line = i18n.t("level.wait")
 	elseif moved then
-		line = with_how(where_line(several, prev, u))
+		line = with_how(where_line(several, prev, u, true))
+		others = others_line(driven, u, snap)
 	else
+		others = others_line(driven, u, snap)
 		local d = ndirs[dir + 1]
 		local ax, ay = u.values[XPOS] + d[1], u.values[YPOS] + d[2]
 		local ahead = state.in_bounds(ax, ay) and state.describe_tile(ax, ay, u) or i18n.t("level.edge")
@@ -277,7 +319,7 @@ local function on_turn_end(extra)
 		line = ahead ~= "" and i18n.t("level.blocked_by", ahead) or i18n.t("level.blocked")
 	end
 	line = with_facing(line)
-	flush(line, true, cursor_line(snap_cursor, you))
+	flush(line, true, { others or "", cursor_line(snap_cursor, you) or "" })
 	cursor_seen = cursor_snapshot()
 	for _, s in ipairs(events.sign_lines()) do speech.speak(s, false) end
 	if win_wait then win_wait = nil; speech.speak(i18n.t("level.win"), false) end
@@ -346,7 +388,10 @@ function M.tick()
 		if undo_delay <= 0 then
 			undo_delay = nil
 			if state.in_level() and not state.cursor_only() then
-				flush(i18n.t("level.undo_at", where_line(false)), true, cursor_line(cursor_seen, state.you_units()))
+				local line = i18n.t("level.undo_at", where_line(false))
+				local new_lead = lead_line()
+				if new_lead then pending[#pending + 1] = new_lead end
+				flush(line, true, cursor_line(cursor_seen, state.you_units()))
 			end
 			cursor_seen = cursor_snapshot()
 		end
@@ -369,11 +414,11 @@ function M.say_rules()
 	speech.speak_lines(rules)
 end
 
--- C: the player's coordinates alone, "col, row"; the map cursor's where
--- there is no player.
+-- C: the player's (the lead's) coordinates alone, "col, row"; the map
+-- cursor's where there is no player.
 function M.say_coords()
 	if not state.in_level() then speech.speak(i18n.t("level.none"), true); return end
-	local u = state.you_units()[1] or state.cursor_unit()
+	local u = state.lead_unit() or state.cursor_unit()
 	if not u then speech.speak(state.no_you_text(), true); return end
 	speech.speak(state.pos_text(u.values[XPOS], u.values[YPOS]), true)
 end
@@ -402,7 +447,7 @@ function M.attach(m)
 	held, warned_forward, auto_release = {}, false, nil
 	if state.in_level() then known_rules = rules_set() end
 
-	hooks.on("level_start", "level.start", function() announce_start = true end)
+	hooks.on("level_start", "level.start", function() announce_start = true; state.reset_lead() end)
 	hooks.on("command_given", "level.command", on_command)
 	hooks.on("turn_auto", "level.auto", on_auto)
 	hooks.on("turn_end", "level.turn", on_turn_end)

@@ -214,6 +214,72 @@ function M.you_units()
 	return list
 end
 
+-- The lead: the one player unit the turn line speaks for and the reading
+-- cursor follows, kept by the game's own unit id (values[ID], which undo
+-- restores) so it is the same Baba turn after turn whichever of them the
+-- game lists first. Backslash chooses it (explore.lua); by default it is the
+-- first player unit. When it stops being a player while others still are
+-- (destroyed, converted), the one nearest where it stood takes over and
+-- take_lead_replaced() says so once; the lost one is remembered, so an undo
+-- that brings it back makes it the lead again. With no player at all the
+-- lead is kept, so a rule that comes back brings the same lead back.
+local lead = nil   -- { key = level key, id = values[ID], x =, y =, lost = { ids replaced, oldest first } }
+local lead_replaced = false
+
+function M.reset_lead()
+	lead, lead_replaced = nil, false
+end
+
+function M.set_lead(u, lost)
+	lead = { key = M.level_key(), id = u.values[ID], x = u.values[XPOS], y = u.values[YPOS], lost = lost or {} }
+end
+
+function M.lead_unit()
+	local you = M.you_units()
+	if #you == 0 then return nil end
+	if lead and lead.key ~= M.level_key() then lead = nil end
+	if lead then
+		local by_id = {}
+		for _, u in ipairs(you) do by_id[u.values[ID]] = u end
+		-- A lead lost earlier is back (an undo): it leads again.
+		for i, id in ipairs(lead.lost) do
+			if by_id[id] then
+				local back = {}
+				for j = 1, i - 1 do back[j] = lead.lost[j] end
+				M.set_lead(by_id[id], back)
+				return by_id[id]
+			end
+		end
+		local u = by_id[lead.id]
+		if u then
+			lead.x, lead.y = u.values[XPOS], u.values[YPOS]
+			return u
+		end
+	end
+	local pick = you[1]
+	if lead then
+		local best = nil
+		for _, u in ipairs(you) do
+			local d = math.abs(u.values[XPOS] - lead.x) + math.abs(u.values[YPOS] - lead.y)
+			if best == nil or d < best then best, pick = d, u end
+		end
+		lead_replaced = #you > 1
+		local lost = lead.lost
+		lost[#lost + 1] = lead.id
+		M.set_lead(pick, lost)
+		return pick
+	end
+	M.set_lead(pick)
+	return pick
+end
+
+-- Whether the lead was replaced since the last call (cleared by the call).
+function M.take_lead_replaced()
+	local r = lead_replaced
+	lead_replaced = false
+	return r
+end
+
 -- Whether empty tiles are the player ("empty is you", you2 or 3d): some
 -- empty tile the rule holds on now. The game's findallfeature returns the
 -- empty tiles per rule, conditions and "never" tested, so a full board or a
