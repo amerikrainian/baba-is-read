@@ -205,6 +205,11 @@ hooks, and rules from the `features` tables.
   left"), and the player's line adds "facing x" when it ends facing other than the way it was
   sent; only for `shows_facing` units, like F. The player's line takes the unit the command drove
   (command_given's player 2 = "you2") that moved, and says how it was moved beyond its step.
+  Empty tiles are never listed: under "empty is you" (`level_state.empty_is_you`, the game's
+  `findallfeature` per-tile result) the turn is its other lines alone, "empty" when there are none,
+  and "empty" stands in for the position (start, H, C, undo, Home); "empty is flag" fills are
+  "made flag n" (the `emptyconvert` creates, not the per-tile converts); a move blocked by an empty
+  tile under stop/push/pull is "blocked, empty".
 - `lua/baba_is_read/ui/`: `menu.lua` (`current()`, `describe(state)`, `static_text`, `title`, `tick`,
   `details`, `dump`), `menu_nav.lua` (`applies`, `active`, `items`, `index`),
   `menu_overrides.lua` (per menu: `items[id] = {kind = toggle|radio|slider|button, label = <game
@@ -307,8 +312,10 @@ crossed-out word on its tile), and a standing rule that becomes blocked or free 
 `ruleblockeffect` draws as the cross; `visualfeatures` holds copies without it); the level start "<name>. <rules>. <you>, col, row". Positions are the game's
 own grid, column first then row (chess order, A1 not 1A). The room (`roomsizex` x `roomsizey`) has a
 one-tile border ring no object stands on (the game's `inbounds(x, y, 1)`), so the playable top-left
-tile is 1, 1 and the cursors stop at `level_state.in_bounds`. Objects with no active rule (floor tiles,
-decoration) are left out of tile readouts (`speak_inert`), never out of the census (L).
+tile is 1, 1 and the cursors stop at `level_state.in_bounds`. Every visible object is read whether or not a rule
+names it (a wall that lost "wall is stop" is still a wall on screen), except the names in config
+`quiet_objects` (comma-separated, "tile" by default: floor), which are left out of tile readouts and
+the reading cursor unless `speak_inert` is on, and never out of the census (N).
 
 ## Languages (`i18n.lua`, `lang/`; the guildrun pattern)
 The mod's words follow the GAME's language (`generaldata.strings[LANG]`: `en`, `de`, `jpn`, `kr`,

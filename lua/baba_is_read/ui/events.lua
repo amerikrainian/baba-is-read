@@ -362,9 +362,11 @@ local function install()
 				if st.dir0 == nil then st.dir0 = line[5] end
 				st.dir1 = line[8]
 				if phase and (dx ~= 0 or dy ~= 0) then st.phase = phase end
-			elseif kind == "convert" then
+			elseif kind == "convert" and line[2] ~= "empty" then
 				converted[#converted + 1] = { from = spoken_name(line[2]), to = spoken_name(line[3]) }
-			elseif kind == "create" and line[5] == "create" then
+			elseif kind == "create" and (line[5] == "create" or line[5] == "emptyconvert") then
+				-- "empty is flag" fills every empty tile: the game records a
+				-- convert from empty and this create per tile; read as made.
 				made[#made + 1] = spoken_name(line[2])
 			elseif kind == "bonus" then
 				bonus = bonus + 1

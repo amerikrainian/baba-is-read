@@ -414,7 +414,11 @@ function M.attach(m)
 	input.bind("explore", "shift+comma", "explore.prev_kind", function() switch_kind(-1) end, kinds)
 	input.bind("explore", "rightbracket", "explore.next_category", function() switch_category(1) end)
 	input.bind("explore", "leftbracket", "explore.prev_category", function() switch_category(-1) end)
-	input.bind("explore", "home", "explore.home", function() park_on_player(); say_tile() end)
+	input.bind("explore", "home", "explore.home", function()
+		-- Nothing to park on ("empty is you", or no player): say so, stay put.
+		if not home_unit() then speech.speak(state.no_you_text(), true); return end
+		park_on_player(); say_tile()
+	end)
 	input.bind("explore", "f", "explore.facing", say_facing, { when = function() return #facing_lines() > 0 end })
 	input.bind("explore", "slash", "explore.mark", place_marker)
 	input.bind("explore", "shift+slash", "explore.unmark", clear_marker, { when = has_marker_here })

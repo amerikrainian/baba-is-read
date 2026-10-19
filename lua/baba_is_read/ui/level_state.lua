@@ -214,6 +214,45 @@ function M.you_units()
 	return list
 end
 
+-- Whether empty tiles are the player ("empty is you", you2 or 3d): some
+-- empty tile the rule holds on now. The game's findallfeature returns the
+-- empty tiles per rule, conditions and "never" tested, so a full board or a
+-- blocked rule is no player.
+function M.empty_is_you()
+	if type(findallfeature) ~= "function" or type(featureindex) ~= "table" or featureindex["empty"] == nil then
+		return false
+	end
+	for _, effect in ipairs({ "you", "you2", "3d" }) do
+		local ok, result, empties = pcall(findallfeature, "empty", "is", effect)
+		if ok and type(result) == "table" and type(empties) == "table" then
+			for i, id in ipairs(result) do
+				if id == 2 and type(empties[i]) == "table" and next(empties[i]) ~= nil then return true end
+			end
+		end
+	end
+	return false
+end
+
+-- What stands in for the player's position when no unit is "you": "empty"
+-- under "empty is you" (the player has no tile), "no you" otherwise.
+function M.no_you_text()
+	return i18n.t(M.empty_is_you() and "level.empty_you" or "level.no_you")
+end
+
+-- Whether a tile is empty and under "empty is stop", push or pull: the cause
+-- of a move into it that was blocked.
+function M.empty_blocks(x, y)
+	if type(hasfeature) ~= "function" or type(featureindex) ~= "table" or featureindex["empty"] == nil then
+		return false
+	end
+	local list = unitmap and roomsizex and unitmap[x + y * roomsizex]
+	if list and #list > 0 then return false end
+	for _, effect in ipairs({ "stop", "push", "pull" }) do
+		if hasfeature("empty", "is", effect, 2, x, y) ~= nil then return true end
+	end
+	return false
+end
+
 -- A rule word as the pause screen prints it: the game's display names for
 -- its internal ones (word_names in values.lua: "turn" is "turn right"), a
 -- leading "not " kept in front.

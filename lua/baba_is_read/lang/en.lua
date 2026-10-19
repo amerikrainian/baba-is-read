@@ -46,6 +46,8 @@ return {
 	["level.win"] = "win",
 	["level.undo_at"] = "undo, {0}",
 	["level.no_you"] = "no you",
+	["level.empty_you"] = "empty",          -- "empty is you": the player has no tile
+	["level.empty"] = "empty",              -- an empty tile that blocked a move ("empty is stop")
 	["level.you_count"] = "{0} you",
 	["level.rule_added"] = "new: {0}",
 	["level.rule_removed"] = "gone: {0}",

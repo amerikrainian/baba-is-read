@@ -11,7 +11,8 @@
 --                      between the rule changes and the turn line
 --   sign text       -> the sign's lines when you step next to it
 --   win / undo      -> "win" / "undo, col, row"
---   no you left     -> "no you"
+--   no you left     -> "no you"; under "empty is you" (no tile to name) the turn's
+--                      other lines alone, "empty" when there are none
 --   the map cursor  -> "cursor, col, row[, level, status]" after the turn line, when a
 --                      turn moved it in a level that also has a player (Depths, Meta):
 --                      one key moves both, and the cursor is read like any other object
@@ -97,6 +98,7 @@ local function flush(line, interrupt, after)
 	if line and line ~= "" then parts[#parts + 1] = line end
 	if after and after ~= "" then parts[#parts + 1] = after end
 	speech.speak_lines(parts, interrupt)
+	return #parts
 end
 
 -- The line for where the player is now: "<name>[, float], col, row[, contents]"
@@ -105,7 +107,7 @@ end
 local function where_line(with_name, prev, unit)
 	local you = state.you_units()
 	local u = unit or you[1]
-	if not u then return i18n.t("level.no_you") end
+	if not u then return state.no_you_text() end
 	local x, y = u.values[XPOS], u.values[YPOS]
 	local name = state.label_of(u)
 	local parts = {}
@@ -214,6 +216,12 @@ local function on_turn_end(extra)
 		if #pending > 0 then flush(nil, false) end
 		return
 	end
+	-- Empty tiles as the player: nothing to place, so the turn is what it did
+	-- (pushes, rule changes, a win); a turn that did nothing says "empty".
+	if #you == 0 and state.empty_is_you() then
+		if flush(nil, true) == 0 then speech.speak(i18n.t("level.empty_you"), true) end
+		return
+	end
 	if #you == 0 then flush(i18n.t("level.no_you"), true); return end
 	-- The units this command drives: player 2 (the game's second key set
 	-- while there is a "you2") moves "you2", player 1 "you". The line is the
@@ -265,6 +273,7 @@ local function on_turn_end(extra)
 		local d = ndirs[dir + 1]
 		local ax, ay = u.values[XPOS] + d[1], u.values[YPOS] + d[2]
 		local ahead = state.in_bounds(ax, ay) and state.describe_tile(ax, ay, u) or i18n.t("level.edge")
+		if ahead == "" and state.empty_blocks(ax, ay) then ahead = i18n.t("level.empty") end
 		line = ahead ~= "" and i18n.t("level.blocked_by", ahead) or i18n.t("level.blocked")
 	end
 	line = with_facing(line)
@@ -365,7 +374,7 @@ end
 function M.say_coords()
 	if not state.in_level() then speech.speak(i18n.t("level.none"), true); return end
 	local u = state.you_units()[1] or state.cursor_unit()
-	if not u then speech.speak(i18n.t("level.no_you"), true); return end
+	if not u then speech.speak(state.no_you_text(), true); return end
 	speech.speak(state.pos_text(u.values[XPOS], u.values[YPOS]), true)
 end
 
